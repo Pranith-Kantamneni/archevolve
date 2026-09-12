@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ARCHEVOLVE - Agentic AI Framework</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --secondary: #34495e;
+            --accent: #e74c3c;
+            --success: #27ae60;
+            --background: #f8f9fa;
+            --card: #ffffff;
+            --text: #2c3e50;
+            --muted: #7f8c8d;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--background);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: var(--primary);
+            color: white;
+            padding: 20px 0;
+            margin: -20px -20px 20px;
+        }
+
+        header h1 {
+            font-size: 24px;
+            font-weight: 300;
+        }
+
+        .section {
+            background: var(--card);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .section h2 {
+            color: var(--primary);
+            border-bottom: 2px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 15px;
+        }
+
+        .score-card {
+            background: #f1f2f6;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            display: inline-block;
+        }
+
+        .score-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--primary);
+        }
+
+        .score-label {
+            color: var(--muted);
+            font-size: 12px;
+            text-transform: uppercase;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+
+        th {
+            background: #f8f9fa;
+            color: var(--primary);
+        }
+
+        .btn {
+            display: inline-block;
+            padding: 8px 16px;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: background 0.3s;
+        }
+
+        .btn:hover {
+            background: #1a252f;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent);
+            width: 0%;
+            transition: width 0.5s ease;
+        }
+
+        .improvement-positive {
+            color: var(--success);
+        }
+
+        .improvement-negative {
+            color: var(--accent);
+        }
+
+        @media (max-width: 600px) {
+            .score-card {
+                display: block;
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>ARCHEVOLVE</h1>
+            <p>Agentic AI Framework for Automated Software System Design</p>
+        </header>
+
+        <div class="section" id="requirements">
+            <h2>1. Requirements</h2>
+            <p id="raw-requirement"></p>
+        </div>
+
+        <div class="section" id="parsed">
+            <h2>2. Parsed Requirements</h2>
+            <div class="row">
+                <div class="col-25">
+                    <label>Expected Users</label><br>
+                    <span id="expected-users">Loading...</span>
+                </div>
+                <div class="col-25">
+                    <label>Security Level</label><br>
+                    <span id="security-level">Loading...</span>
+                </div>
+                <div class="col-25">
+                    <label>Cost Sensitive</label><br>
+                    <span id="cost-sensitive">Loading...</span>
+                </div>
+                <div class="col-25">
+                    <label>Scalability Type</label><br>
+                    <span id="scalability-type">Loading...</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="section" id="population">
+            <h3>3. Initial Population</h3>
+            <p id="population-count">Loading...</p>
+            <div id="candidates-list"></div>
+        </div>
+
+        <div class="section" id="evolution">
+            <h3>4-7. Evolutionary Process</h3>
+            <div id="evolution-status">Initializing...</div>
+        </div>
+
+        <div class="section" id="results" style="display: none;">
+            <h3>12. Results</h3>
+            <div class="row">
+                <div class="col-25">
+                    <div class="score-card">
+                        <div class="score-label">Initial Fitness</div>
+                        <div class="score-value" id="initial-fitness">0</div>
+                    </div>
+                </div>
+                <div class="col-25">
+                    <div class="score-card">
+                        <div class="score-label">Final Fitness</div>
+                        <div class="score-value" id="final-fitness">0</div>
+                    </div>
+                </div>
+                <div class="col-25">
+                    <div class="score-card">
+                        <div class="score-label">Absolute Improvement</div>
+                        <div class="score-value" id="abs-improvement">0</div>
+                    </div>
+                </div>
+                <div class="col-25">
+                    <div class="score-card">
+                        <div class="score-label">Percentage Improvement</div>
+                        <div class="score-value" id="pct-improvement">0%</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            async function loadDemo() {
+                try {
+                    const resp = await fetch('/health');
+                    const health = await resp.json();
+                    document.getElementById('parsed').style.display = 'block';
+                    
+                    // Set parsed requirements
+                    document.getElementById('expected-users').textContent = '10,000';
+                    document.getElementById('security-level').textContent = 'high';
+                    document.getElementById('cost-sensitive').textContent = 'True';
+                    document.getElementById('scalability-type').textContent = 'horizontal';
+                    
+                    // Load optimization results
+                    const optResp = await fetch('/optimize', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({
+                            requirements: 'Build an e-commerce platform that supports 10,000 concurrent users, requires high availability, secure payment processing, low latency, and should be scalable during traffic spikes while keeping infrastructure cost reasonable.',
+                            population_size: 5,
+                            generations: 3
+                        })
+                    });
+                    const optData = await optResp.json();
+                    
+                    // Show results
+                    document.getElementById('initial-fitness').textContent = optData.baseline.overall;
+                    document.getElementById('final-fitness').textContent = optData.final_scores.overall;
+                    document.getElementById('abs-improvement').textContent = optData.improvement.absolute.toFixed(1);
+                    document.getElementById('pct-improvement').textContent = optData.improvement.percentage.toFixed(1) + '%';
+                    
+                    document.getElementById('results').style.display = 'block';
+                    
+                } catch (err) {
+                    console.error('Error loading demo:', err);
+                }
+            }
+            
+            // Load on page ready
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentoload', loadDemo);
+            } else {
+                loadDemo();
+            }
+        </script>
+    </div>
+</body>
+</html>
