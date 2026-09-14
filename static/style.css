@@ -337,3 +337,69 @@ footer.site { text-align: center; color: var(--muted2); font-size: 12px; padding
 
 .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
 .status-dot.g { background: var(--green); box-shadow: 0 0 8px var(--green); }
+
+/* ---------- Multi-Agent Trace & Experience Memory ---------- */
+.agent-filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+.tab-btn {
+  background: var(--panel2); border: 1px solid var(--border); color: var(--muted);
+  padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 700;
+  cursor: pointer; transition: all 0.15s; font-family: inherit;
+}
+.tab-btn:hover { background: var(--panel3); color: var(--text); border-color: var(--border2); }
+.tab-btn.active { background: var(--panel3); color: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.tab-btn.active.tab-success { color: var(--green); border-color: var(--green); box-shadow: 0 0 0 1px var(--green); }
+.tab-btn.active.tab-failure { color: var(--red); border-color: var(--red); box-shadow: 0 0 0 1px var(--red); }
+
+.agent-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 8px; font-size: 11.5px; font-weight: 700;
+  letter-spacing: 0.02em; text-transform: uppercase;
+}
+.agent-req { background: rgba(109, 94, 252, 0.15); color: var(--purple); border: 1px solid rgba(109, 94, 252, 0.35); }
+.agent-gen { background: rgba(57, 197, 207, 0.15); color: var(--cyan); border: 1px solid rgba(57, 197, 207, 0.35); }
+.agent-eval { background: rgba(77, 159, 255, 0.15); color: var(--accent); border: 1px solid rgba(77, 159, 255, 0.35); }
+.agent-sel { background: rgba(210, 153, 34, 0.15); color: var(--yellow); border: 1px solid rgba(210, 153, 34, 0.35); }
+.agent-mut { background: rgba(240, 136, 62, 0.15); color: var(--orange); border: 1px solid rgba(240, 136, 62, 0.35); }
+.agent-mem { background: rgba(63, 185, 80, 0.15); color: var(--green); border: 1px solid rgba(63, 185, 80, 0.35); }
+.agent-final { background: linear-gradient(135deg, rgba(77,159,255,0.2), rgba(109,94,252,0.2)); color: #fff; border: 1px solid var(--accent); }
+
+.trace-table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; }
+.trace-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.trace-table th { background: var(--panel2); padding: 11px 14px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted2); font-weight: 700; border-bottom: 1px solid var(--border); }
+.trace-table td { padding: 12px 14px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+.trace-table tr:last-child td { border-bottom: none; }
+.trace-table tr:hover { background: rgba(255, 255, 255, 0.02); }
+
+.outcome-pill {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 3px 9px; border-radius: 6px; font-size: 11px; font-weight: 800;
+  text-transform: uppercase; letter-spacing: 0.04em;
+}
+.outcome-success, .outcome-improved, .outcome-selected { background: rgba(63, 185, 80, 0.16); color: var(--green); border: 1px solid rgba(63, 185, 80, 0.4); }
+.outcome-failure, .outcome-degraded, .outcome-rejected { background: rgba(248, 81, 73, 0.16); color: var(--red); border: 1px solid rgba(248, 81, 73, 0.4); }
+.outcome-evaluated, .outcome-generated, .outcome-mutated { background: rgba(77, 159, 255, 0.16); color: var(--accent); border: 1px solid rgba(77, 159, 255, 0.4); }
+.outcome-finalized { background: rgba(188, 140, 255, 0.16); color: var(--purple); border: 1px solid rgba(188, 140, 255, 0.4); }
+
+.exp-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 14px; margin-top: 14px; }
+@media (max-width: 600px) { .exp-cards-grid { grid-template-columns: 1fr; } }
+.exp-card {
+  background: var(--panel2); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px; position: relative;
+  display: flex; flex-direction: column; gap: 10px;
+  border-left-width: 4px;
+}
+.exp-card.is-success { border-left-color: var(--green); }
+.exp-card.is-failure { border-left-color: var(--red); }
+.exp-card-header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.exp-card-arch { font-weight: 700; font-size: 14px; color: var(--text); }
+.exp-card-learned {
+  background: var(--panel3); border-radius: 8px; padding: 10px 12px;
+  font-size: 13px; color: var(--text); line-height: 1.45;
+}
+.exp-card-learned .learned-label { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 800; margin-bottom: 3px; display: block; }
+.is-success .learned-label { color: var(--green); }
+.is-failure .learned-label { color: var(--red); }
+.exp-card-meta { display: flex; align-items: center; justify-content: space-between; font-size: 11.5px; color: var(--muted2); }
+.exp-scores-mini { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 4px; }
+.exp-score-tag { background: var(--bg2); border-radius: 4px; padding: 2px 6px; font-size: 11px; color: var(--muted); }
+

@@ -28,6 +28,7 @@ class Candidate:
     # Metadata
     selected_for_mutation: bool = False
     mutation_source: str = ""  # which architecture this came from
+    evaluator_results: Dict[str, Any] = field(default_factory=dict)
 
     def compute_fitness(self) -> None:
         """Calculate overall fitness from objective scores using default equal weights."""

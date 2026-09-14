@@ -148,24 +148,49 @@
       <div class="gen-timeline" id="timeline"></div>
     </section>
 
-    <!-- 8. What changed -->
+    <!-- 8. Agent Evolution Trace -->
     <section class="card" style="margin-bottom:18px;">
       <div class="section-label">Section 8</div>
-      <div class="section-title">What Changed?</div>
-      <p class="section-sub mb16">Mutations applied by ARCHEVOLVE and the reasoning behind each one.</p>
-      <div id="changes"></div>
+      <div class="section-title">Agent Evolution Trace</div>
+      <p class="section-sub mb16">Complete chronological trace of actions, evaluations, selections, mutations, and decisions across all specialized agents.</p>
+      
+      <div class="agent-filter-bar" id="trace-filter-bar"></div>
+      
+      <div class="trace-table-wrap">
+        <table class="trace-table">
+          <thead>
+            <tr>
+              <th style="width:70px;">Gen</th>
+              <th style="width:190px;">Agent</th>
+              <th style="width:140px;">Action</th>
+              <th style="width:170px;">Architecture</th>
+              <th>Reason &amp; Decisions</th>
+              <th style="width:110px;">Outcome</th>
+              <th style="width:80px;text-align:right;">Fitness</th>
+            </tr>
+          </thead>
+          <tbody id="agent-trace-body"></tbody>
+        </table>
+      </div>
     </section>
 
-    <!-- 9. Experience memory -->
+    <!-- 9. Experience Memory -->
     <section class="card" style="margin-bottom:18px;">
       <div class="section-label">Section 9</div>
-      <div class="section-title">Relevant Design Experiences Used During Evolution</div>
-      <p class="section-sub mb16">Experience memory consulted during mutation.</p>
-      <ul class="exp-list" id="experience"></ul>
-      <div class="muted2 mt8" id="exp-count" style="font-size:12px;"></div>
+      <div class="section-title">Experience Memory</div>
+      <p class="section-sub mb16">Persistent memory of both SUCCESSFUL and FAILED experiences. ARCHEVOLVE retrieves prior outcomes to guide subsequent mutations.</p>
+      
+      <div class="agent-filter-bar">
+        <button class="tab-btn active" id="exp-tab-all" onclick="filterExperiences('all')">All Experiences (<span id="cnt-all">0</span>)</button>
+        <button class="tab-btn tab-success" id="exp-tab-success" onclick="filterExperiences('success')">✓ Successful Experiences (<span id="cnt-success">0</span>)</button>
+        <button class="tab-btn tab-failure" id="exp-tab-failure" onclick="filterExperiences('failure')">✗ Failed Experiences (<span id="cnt-failure">0</span>)</button>
+      </div>
+
+      <div class="exp-cards-grid" id="experience-cards"></div>
+      <div class="muted2 mt16" id="exp-count" style="font-size:12px;"></div>
     </section>
 
-    <!-- 10. Design report -->
+    <!-- 10. Final Design Report -->
     <section class="card">
       <div class="section-label">Section 10</div>
       <div class="section-title">Final Design Report</div>
@@ -347,18 +372,170 @@
     $("fitness-line").innerHTML = renderLine(prog);
     $("timeline").innerHTML = renderTimeline(d.generation_history || []);
 
-    // Section 8 changes
-    $("changes").innerHTML = renderChanges(d.generation_history || []);
+    // Section 8 Agent Evolution Trace
+    ALL_TRACES = d.agent_evolution_trace || d.agent_trace || [];
+    initTraceFilters(ALL_TRACES);
+    renderAgentTrace(ALL_TRACES);
 
-    // Section 9 experience
-    const exp = d.experience_used || [];
-    $("experience").innerHTML = exp.length
-      ? exp.map(e => "<li>" + esc(e) + "</li>").join("")
-      : '<li class="muted2">No prior experience entries matched this candidate. Experience memory is populated as runs complete.</li>';
-    $("exp-count").textContent = "Experience memory contains " + (d.experience_memory_entries || 0) + " stored entries in total.";
+    // Section 9 Experience Memory
+    loadExperienceMemory(d);
 
     // Report
     $("report-body").innerHTML = buildReport(d);
+  }
+
+  let ALL_TRACES = [];
+  let SELECTED_GEN = "all";
+  let ALL_EXPERIENCES = [];
+  let SELECTED_EXP_TAB = "all";
+
+  function initTraceFilters(traces) {
+    const gens = [...new Set(traces.map(t => t.generation != null ? t.generation : 0))].sort((a,b)=>a-b);
+    let html = '<button class="tab-btn active" id="tr-filter-all" onclick="filterAgentTrace(\'all\')">All Generations (' + traces.length + ')</button>';
+    gens.forEach(g => {
+      const cnt = traces.filter(t => t.generation === g).length;
+      html += '<button class="tab-btn" id="tr-filter-' + g + '" onclick="filterAgentTrace(' + g + ')">Gen ' + g + ' (' + cnt + ')</button>';
+    });
+    $("trace-filter-bar").innerHTML = html;
+  }
+
+  function filterAgentTrace(gen) {
+    SELECTED_GEN = gen;
+    document.querySelectorAll("#trace-filter-bar .tab-btn").forEach(b => b.classList.remove("active"));
+    const activeBtn = $("tr-filter-" + gen);
+    if (activeBtn) activeBtn.classList.add("active");
+
+    const filtered = (gen === "all") ? ALL_TRACES : ALL_TRACES.filter(t => t.generation === gen);
+    renderAgentTrace(filtered);
+  }
+
+  function getAgentBadgeClass(agentName) {
+    const n = (agentName || "").toLowerCase();
+    if (n.includes("requirement")) return "agent-req";
+    if (n.includes("generation")) return "agent-gen";
+    if (n.includes("evaluat") || n.includes("cost") || n.includes("security") || n.includes("performance") || n.includes("reliability") || n.includes("scalability")) return "agent-eval";
+    if (n.includes("selection")) return "agent-sel";
+    if (n.includes("evolution") || n.includes("mutation")) return "agent-mut";
+    if (n.includes("memory") || n.includes("experience")) return "agent-mem";
+    if (n.includes("final")) return "agent-final";
+    return "agent-eval";
+  }
+
+  function renderAgentTrace(traces) {
+    if (!traces || !traces.length) {
+      $("agent-trace-body").innerHTML = '<tr><td colspan="7" class="muted2 center" style="padding:24px;">No agent actions recorded for this filter.</td></tr>';
+      return;
+    }
+
+    $("agent-trace-body").innerHTML = traces.map(t => {
+      const badgeCls = getAgentBadgeClass(t.agent);
+      const outcome = (t.outcome || "evaluated").toLowerCase();
+      const outcomeCls = "outcome-" + outcome;
+      const fit = t.fitness != null ? f1(t.fitness) : "—";
+      const arch = t.architecture || "—";
+      const gen = t.generation != null ? "G" + t.generation : "G0";
+
+      return '<tr>' +
+        '<td class="mono muted">' + esc(gen) + '</td>' +
+        '<td><span class="agent-badge ' + badgeCls + '">' + esc(t.agent) + '</span></td>' +
+        '<td style="font-weight:600;">' + esc(t.action) + '</td>' +
+        '<td class="muted" style="font-weight:600;">' + esc(arch) + '</td>' +
+        '<td style="font-size:12.5px;color:var(--muted);">' + esc(t.reason || "—") + '</td>' +
+        '<td><span class="outcome-pill ' + outcomeCls + '">' + esc(outcome) + '</span></td>' +
+        '<td style="text-align:right;font-weight:700;color:var(--text);">' + fit + '</td>' +
+        '</tr>';
+    }).join("");
+  }
+
+  async function loadExperienceMemory(d) {
+    try {
+      const r = await fetch("/api/experience?limit=60");
+      if (r.ok) {
+        ALL_EXPERIENCES = await r.json();
+      }
+    } catch (e) {
+      console.warn("Could not fetch /api/experience, using run data", e);
+    }
+
+    // Fallback if API returned empty
+    if (!ALL_EXPERIENCES || !ALL_EXPERIENCES.length) {
+      ALL_EXPERIENCES = [];
+      // Derive experiences from generation offspring and trace
+      (d.generation_history || []).forEach(g => {
+        (g.offspring || []).forEach(o => {
+          ALL_EXPERIENCES.push({
+            architecture_name: o.name,
+            generation: g.generation,
+            outcome: (o.outcome || "success").toLowerCase(),
+            reason: o.reasoning || o.why_it_changed || "Mutation applied",
+            changes_made: o.modifications || o.what_changed || [],
+            fitness: o.fitness,
+            evaluation_scores: o.objective_scores || {},
+          });
+        });
+      });
+    }
+
+    const sCount = ALL_EXPERIENCES.filter(e => (e.outcome || "").toLowerCase() === "success").length;
+    const fCount = ALL_EXPERIENCES.filter(e => (e.outcome || "").toLowerCase() === "failure").length;
+
+    $("cnt-all").textContent = ALL_EXPERIENCES.length;
+    $("cnt-success").textContent = sCount;
+    $("cnt-failure").textContent = fCount;
+    $("exp-count").textContent = "Experience memory contains " + ALL_EXPERIENCES.length + " total records (" + sCount + " successful, " + fCount + " failed) across optimization runs.";
+
+    filterExperiences("all");
+  }
+
+  function filterExperiences(tab) {
+    SELECTED_EXP_TAB = tab;
+    ["all", "success", "failure"].forEach(t => {
+      const btn = $("exp-tab-" + t);
+      if (btn) {
+        if (t === tab) btn.classList.add("active");
+        else btn.classList.remove("active");
+      }
+    });
+
+    let list = ALL_EXPERIENCES;
+    if (tab === "success") list = ALL_EXPERIENCES.filter(e => (e.outcome || "").toLowerCase() === "success");
+    if (tab === "failure") list = ALL_EXPERIENCES.filter(e => (e.outcome || "").toLowerCase() === "failure");
+
+    renderExperienceCards(list);
+  }
+
+  function renderExperienceCards(list) {
+    if (!list || !list.length) {
+      $("experience-cards").innerHTML = '<p class="muted2" style="grid-column: 1 / -1; padding: 20px; background:var(--panel2); border-radius:10px;">No experiences found in this category.</p>';
+      return;
+    }
+
+    $("experience-cards").innerHTML = list.map(e => {
+      const outcome = (e.outcome || "success").toLowerCase();
+      const isSucc = outcome === "success";
+      const cls = isSucc ? "is-success" : "is-failure";
+      const pill = isSucc ? '<span class="outcome-pill outcome-success">✓ SUCCESS</span>' : '<span class="outcome-pill outcome-failure">✗ FAILURE</span>';
+      const label = isSucc ? 'What Worked / Learned' : 'Failure Analysis / Learned';
+      const scores = e.evaluation_scores || e.objective_scores || {};
+      const scoreTags = Object.keys(scores).map(k => '<span class="exp-score-tag">' + esc(k) + ': ' + f1(scores[k]) + '</span>').join("");
+
+      return '<div class="exp-card ' + cls + '">' +
+        '<div class="exp-card-header">' +
+          '<div class="exp-card-arch">' + esc(e.architecture_name || e.architecture || "Candidate") + '</div>' +
+          '<div>' + pill + '</div>' +
+        '</div>' +
+        '<div class="exp-card-learned">' +
+          '<span class="learned-label">' + label + '</span>' +
+          esc(e.reason || "Architectural pattern evaluation") +
+        '</div>' +
+        (e.changes_made && e.changes_made.length ? '<div class="muted" style="font-size:12px;"><b>Changes:</b> ' + esc(e.changes_made.join(", ")) + '</div>' : '') +
+        (scoreTags ? '<div class="exp-scores-mini">' + scoreTags + '</div>' : '') +
+        '<div class="exp-card-meta">' +
+          '<span>Gen ' + (e.generation != null ? e.generation : 0) + (e.application_type ? ' · ' + esc(e.application_type) : '') + '</span>' +
+          '<span style="font-weight:700;color:var(--text);">Fitness: ' + f1(e.fitness) + '</span>' +
+        '</div>' +
+      '</div>';
+    }).join("");
   }
 
   function kpi(label, value, sub, cls) {
@@ -542,23 +719,6 @@
       }
       return '<div class="gen-item"><div class="gen-badge"><div class="g-num">Gen ' + g.generation + '</div><div class="g-fit">' + fit + '</div></div>' +
         '<div class="gen-body">' + body + '</div></div>';
-    }).join("");
-  }
-
-  function renderChanges(gens) {
-    const items = [];
-    gens.filter(g => g.generation > 0).forEach(g => {
-      (g.offspring || []).forEach(o => items.push(o));
-    });
-    if (!items.length) return '<p class="muted2">No mutations were required for this run.</p>';
-    return items.map(o => {
-      const weak = (o.source_weaknesses || []).filter(w => w && w !== "no significant weaknesses identified");
-      return '<div class="mutation" style="margin:12px 0;"><div class="m-title">' + esc(o.name) +
-        ' <span class="m-fit">fitness ' + f1(o.fitness) + '</span></div>' +
-        '<div class="m-mods">' + (o.modifications || []).map(m => "• " + esc(m)).join("<br>") + '</div>' +
-        '<div class="m-reason">Reason: ' + esc(o.reasoning || "") + (weak.length ? ' (weaknesses: ' + esc(weak.join(", ")) + ')' : "") + '</div>' +
-        (o.experience_used && o.experience_used.length ? '<div class="m-reason">Experience: ' + esc(o.experience_used[0]) + '</div>' : '') +
-        '</div>';
     }).join("");
   }
 

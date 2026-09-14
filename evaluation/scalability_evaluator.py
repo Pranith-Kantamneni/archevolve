@@ -11,13 +11,19 @@ class EvaluatorResult:
     def __init__(
         self,
         score: float,
-        reasoning: str,
+        reasoning: str = "",
+        strengths: list[str] | None = None,
+        weaknesses: list[str] | None = None,
+        reason: str | None = None,
     ):
-        self.score = score
-        self.reasoning = reasoning
+        self.score = float(score)
+        self.reason = reason if reason is not None else reasoning
+        self.reasoning = self.reason
+        self.strengths = list(strengths or [])
+        self.weaknesses = list(weaknesses or [])
 
     def __str__(self) -> str:
-        return f"Score: {self.score:.1f} - {self.reasoning}"
+        return f"Score: {self.score:.1f} - {self.reason}"
 
 
 class ScalabilityEvaluator:
@@ -32,67 +38,68 @@ class ScalabilityEvaluator:
         communication_pattern = architecture.communication_pattern
         deployment_strategy = architecture.deployment_strategy
 
-        # Analyze scalability-related features
         num_services = len(components)
         has_cache = any(c.type == "cache" for c in components)
         has_messaging = any(c.type == "messaging" for c in components)
         is_monolithic = num_services <= 2
         managed_count = sum(1 for c in components if c.managed)
 
-        # Base score
         score = 50
 
-        # Stateless/services architecture scales horizontally
         if not is_monolithic:
             score += 20
         else:
-            score -= 10  # monoliths harder to scale horizontally
+            score -= 10
 
-        # Messaging/event-driven enables scaling
         if has_messaging:
             score += 15
 
-        # Caches help with read scalability
         if has_cache:
             score += 10
 
-        # Managed services can scale automatically
         if managed_count > 0:
             score += 5
 
-        # Monolith penalty
         if is_monolithic:
-            score -= 15  # significant scaling limitations
+            score -= 15
 
-        # Cap at 100
         score = max(0, min(100, score))
 
-        # Build reasoning
+        strengths = []
+        weaknesses = []
         reasons_list = []
+
         if not is_monolithic:
-            reasons_list.append(
-                "Modular architecture enables horizontal scaling."
-            )
+            strengths.append("Modular microservices layout enables independent auto-scaling per service tier.")
+            reasons_list.append("Modular architecture enables horizontal scaling.")
         else:
-            reasons_list.append(
-                "Monolithic architecture limits horizontal scaling."
-            )
+            weaknesses.append("Monolithic deployment restricts horizontal elasticity and creates scaling bottlenecks.")
+            reasons_list.append("Monolithic architecture limits horizontal scaling.")
 
         if has_messaging:
-            reasons_list.append(
-                "Messaging infrastructure supports event-driven scaling."
-            )
+            strengths.append("Distributed message queue facilitates elastic event-driven worker scaling.")
+            reasons_list.append("Messaging infrastructure supports event-driven scaling.")
+        else:
+            weaknesses.append("Synchronous request fan-out limits maximum concurrency under traffic surges.")
 
         if has_cache:
-            reasons_list.append(
-                "Cache supports read scalability."
-            )
+            strengths.append("Distributed cache layer offloads query volume, boosting concurrent read capacity.")
+            reasons_list.append("Cache supports read scalability.")
 
-        if is_monolithic and not has_messaging and not has_cache:
-            reasons_list.append(
-                "Limited scalability features for horizontal growth."
-            )
+        if managed_count > 0:
+            reasons_list.append("Managed cloud services provide automated elasticity.")
 
-        reasoning = " | ".join(reasons_list) if reasons_list else "Scalability assessment based on architecture type and infrastructure."
+        if not strengths:
+            strengths.append("Baseline capacity for single-node scaling.")
+        if not weaknesses and score < 75:
+            weaknesses.append("Lacks auto-sharded database tier for petabyte-scale horizontal growth.")
 
-        return EvaluatorResult(score=score, reasoning=reasoning)
+        reason = " | ".join(reasons_list) if reasons_list else "Scalability assessment based on architecture type and infrastructure."
+
+        return EvaluatorResult(
+            score=score,
+            reasoning=reason,
+            strengths=strengths,
+            weaknesses=weaknesses,
+            reason=reason,
+        )

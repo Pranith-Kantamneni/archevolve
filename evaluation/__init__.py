@@ -25,6 +25,7 @@ class FitnessResult:
         reliability_reasoning: str = "",
         performance_reasoning: str = "",
         scalability_reasoning: str = "",
+        evaluator_results: Dict[str, Any] | None = None,
     ):
         self.cost = cost
         self.security = security
@@ -38,6 +39,8 @@ class FitnessResult:
         self.reliability_reasoning = reliability_reasoning
         self.performance_reasoning = performance_reasoning
         self.scalability_reasoning = scalability_reasoning
+
+        self.evaluator_results = evaluator_results or {}
 
     def __str__(self) -> str:
         lines = [
@@ -54,12 +57,10 @@ class FitnessResult:
 def _get_components(architecture: object) -> list:
     """Extract components list from architecture, handling both Pydantic models and dicts."""
     if hasattr(architecture, "components"):
-        # Pydantic model or object with components attribute
         comps = architecture.components
         if isinstance(comps, list):
             return comps
     if isinstance(architecture, dict):
-        # Dict-like object
         comps = architecture.get("components", [])
         if isinstance(comps, list):
             return comps
@@ -70,9 +71,6 @@ def evaluate_architecture(
     architecture: object,
 ) -> FitnessResult:
     """Evaluate an architecture across all objectives and compute fitness."""
-    # Extract components
-    components = _get_components(architecture)
-
     # Cost evaluation
     cost_eval = CostEvaluator()
     cost_result = cost_eval.evaluate(architecture)
@@ -107,6 +105,14 @@ def evaluate_architecture(
         + 0.20 * scalability
     )
 
+    eval_results = {
+        "cost": cost_result,
+        "security": sec_result,
+        "reliability": rel_result,
+        "performance": perf_result,
+        "scalability": scal_result,
+    }
+
     return FitnessResult(
         cost=cost,
         security=security,
@@ -119,4 +125,5 @@ def evaluate_architecture(
         reliability_reasoning=rel_result.reasoning,
         performance_reasoning=perf_result.reasoning,
         scalability_reasoning=scal_result.reasoning,
+        evaluator_results=eval_results,
     )

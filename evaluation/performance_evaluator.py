@@ -11,13 +11,19 @@ class EvaluatorResult:
     def __init__(
         self,
         score: float,
-        reasoning: str,
+        reasoning: str = "",
+        strengths: list[str] | None = None,
+        weaknesses: list[str] | None = None,
+        reason: str | None = None,
     ):
-        self.score = score
-        self.reasoning = reasoning
+        self.score = float(score)
+        self.reason = reason if reason is not None else reasoning
+        self.reasoning = self.reason
+        self.strengths = list(strengths or [])
+        self.weaknesses = list(weaknesses or [])
 
     def __str__(self) -> str:
-        return f"Score: {self.score:.1f} - {self.reasoning}"
+        return f"Score: {self.score:.1f} - {self.reason}"
 
 
 class PerformanceEvaluator:
@@ -31,75 +37,69 @@ class PerformanceEvaluator:
         components = architecture.components
         communication_pattern = architecture.communication_pattern
 
-        # Analyze performance-related features
         num_services = len(components)
         has_cache = any(c.type == "cache" for c in components)
         has_messaging = any(c.type == "messaging" for c in components)
         is_monolithic = num_services <= 2
         has_gateway = any(c.type == "gateway" for c in components)
 
-        # Base score
         score = 50
 
-        # Cache significantly improves performance
         if has_cache:
             score += 25
-
-        # Gateway can help with routing and optimization
         if has_gateway:
             score += 5
 
-        # Communication pattern matters
         if communication_pattern == "async":
-            score += 5  # async can improve throughput
+            score += 5
         elif communication_pattern == "sync":
-            score -= 3  # sync can be bottleneck
-        # event-driven is neutral
+            score -= 3
 
-        # Many services can introduce latency
         if not is_monolithic and num_services > 5:
-            score -= 10  # communication overhead
+            score -= 10
         elif not is_monolithic:
-            score += 2  # parallelism benefit
+            score += 2
 
-        # Cap at 100
         score = max(0, min(100, score))
 
-        # Build reasoning
+        strengths = []
+        weaknesses = []
         reasons_list = []
+
         if has_cache:
-            reasons_list.append(
-                "Cache present, reducing latency for repeated requests."
-            )
+            strengths.append("In-memory cache delivers sub-millisecond retrieval latency for hot data paths.")
+            reasons_list.append("Cache present, reducing latency for repeated requests.")
+        else:
+            weaknesses.append("Absence of caching forces repeated disk I/O / database queries.")
+            reasons_list.append("No cache; performance depends on database latency.")
 
         if communication_pattern == "async":
-            reasons_list.append(
-                "Asynchronous communication improves throughput."
-            )
+            strengths.append("Asynchronous pipeline unblocks request execution and maximizes throughput.")
+            reasons_list.append("Asynchronous communication improves throughput.")
         elif communication_pattern == "sync":
-            reasons_list.append(
-                "Synchronous communication used."
-            )
+            weaknesses.append("Synchronous request-response chaining introduces cascade latency.")
+            reasons_list.append("Synchronous communication used.")
 
         if has_gateway:
-            reasons_list.append(
-                "API gateway enables request routing and optimization."
-            )
+            strengths.append("API gateway accelerates routing, SSL termination, and payload compression.")
+            reasons_list.append("API gateway enables request routing and optimization.")
 
         if is_monolithic:
-            reasons_list.append(
-                "Monolithic deployment reduces inter-service latency."
-            )
+            reasons_list.append("Monolithic deployment reduces inter-service latency.")
         else:
-            reasons_list.append(
-                "Distributed services with potential communication overhead."
-            )
+            reasons_list.append("Distributed services with potential communication overhead.")
 
-        if not has_cache and not is_monolithic:
-            reasons_list.append(
-                "No cache; performance depends on database latency."
-            )
+        if not strengths:
+            strengths.append("Standard execution pipeline latency.")
+        if not weaknesses and score < 75:
+            weaknesses.append("Network serialization across microservices creates modest latency overhead.")
 
-        reasoning = " | ".join(reasons_list) if reasons_list else "Performance assessment based on caching and communication pattern."
+        reason = " | ".join(reasons_list) if reasons_list else "Performance assessment based on caching and communication pattern."
 
-        return EvaluatorResult(score=score, reasoning=reasoning)
+        return EvaluatorResult(
+            score=score,
+            reasoning=reason,
+            strengths=strengths,
+            weaknesses=weaknesses,
+            reason=reason,
+        )

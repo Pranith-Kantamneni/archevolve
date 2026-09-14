@@ -17,8 +17,12 @@ app = FastAPI(
     description="Agentic AI Framework for Automated Software System Design",
 )
 
-app.mount("/static", StaticFiles(directory="archevolve/static"), name="static")
-templates = Jinja2Templates(directory="archevolve/templates")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static") if os.path.exists(os.path.join(BASE_DIR, "static")) else "archevolve/static"
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates") if os.path.exists(os.path.join(BASE_DIR, "templates")) else "archevolve/templates"
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 
 class OptimizeRequest(BaseModel):
@@ -96,6 +100,16 @@ async def get_results(run_id: str) -> Dict[str, Any]:
     if result is None:
         raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found.")
     return result
+
+
+@app.get("/api/experience", response_model=List[Dict[str, Any]])
+async def get_experience(outcome: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    """Return stored experience memory entries (both successes and failures)."""
+    from archevolve.memory.experience_memory import JsonExperienceMemory
+    exp_path = os.environ.get("ARCHEVOLVE_EXPERIENCE_PATH", "experience_memory.json")
+    mem = JsonExperienceMemory(exp_path)
+    entries = mem.recent_entries(limit=limit, outcome=outcome)
+    return [e.to_dict() for e in entries]
 
 
 @app.get("/api/runs", response_model=List[RunSummary])
