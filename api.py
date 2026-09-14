@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from typing import Any, Dict, List, Optional
 
 from fastapi import FastAPI, HTTPException
@@ -9,109 +10,125 @@ from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel, Field
 from starlette.requests import Request
 
-from archevolve.evolution.evolution_engine import EvolutionEngine
+from archevolve.runner import run_optimization, load_run, _runs_dir
 
-app = FastAPI(title="ARCHEVOLVE API", description="Agentic AI Framework for Automated Software System Design")
+app = FastAPI(
+    title="ARCHEVOLVE",
+    description="Agentic AI Framework for Automated Software System Design",
+)
 
 app.mount("/static", StaticFiles(directory="archevolve/static"), name="static")
 templates = Jinja2Templates(directory="archevolve/templates")
 
 
 class OptimizeRequest(BaseModel):
+    application_type: str = Field(
+        default="",
+        description="Application / system type, e.g. 'E-commerce platform'",
+    )
     requirements: str = Field(
-        default=(
-            "Build an e-commerce platform that supports 10,000 concurrent users, "
-            "requires high availability, secure payment processing, low latency, "
-            "and should be scalable during traffic spikes while keeping infrastructure "
-            "cost reasonable."
-        ),
-        description="Natural-language software requirement",
+        default="",
+        description="Natural-language system requirements",
     )
-    population_size: int = Field(default=5, ge=2, le=20)
-    generations: int = Field(default=5, ge=1, le=10)
-
-
-def _run_demo(raw_requirement: str, population_size: int, generations: int) -> Dict[str, Any]:
-    engine = EvolutionEngine(
-        population_size=population_size,
-        max_generations=generations,
-        selection_count=2,
-        mutation_count=2,
-        weights=None,
-        use_llm=False,
+    constraints: Optional[str] = Field(
+        default="",
+        description="Optional additional constraints (budget, provider, compliance, ...)",
     )
-    results = engine.run(raw_requirement)
 
-    return {
-        "raw_requirement": results["raw_requirement"],
-        "parsed_requirements": results["parsed_requirements"],
-        "baseline": results["baseline"],
-        "final_scores": results["final_scores"],
-        "improvement": results["improvement"],
-        "final_architecture": results["final_architecture"],
-        "initial_population": results["initial_population"],
-        "evolution_history": results["evolution_history"],
-        "experience_memory_entries": results["experience_memory_entries"],
-    }
+
+class RunSummary(BaseModel):
+    run_id: str
+    application_type: str
+    created_at: str
+    final_fitness: Optional[float] = None
+    improvement_pct: Optional[float] = None
 
 
 @app.get("/", include_in_schema=False)
 async def root(request: Request) -> HTMLResponse:
-    """Serve the main showcase HTML page."""
-    return templates.TemplateResponse(
-        request, "index.html", {"title": "ARCHEVOLVE — Results"}
-    )
+    """Serve the input/home page."""
+    return templates.TemplateResponse(request, "index.html", {"title": "ARCHEVOLVE"})
 
 
 @app.get("/health", include_in_schema=False)
 async def health() -> Dict[str, str]:
-    """Health check endpoint."""
     return {"status": "healthy", "service": "archevolve"}
 
 
 @app.post("/optimize", response_model=Dict[str, Any])
 async def optimize(req: OptimizeRequest) -> Dict[str, Any]:
-    """Run the complete ARCHEVOLVE evolutionary optimization pipeline.
+    """Run the full ARCHEVOLVE pipeline for the user's requirements.
 
-    Accepts natural-language software requirements and returns the full
-    evolution trace: parsed requirements, candidate architectures, objective
-    scores, fitness, improvement and the final best architecture.
+    The backend/core engine is the single source of truth: all architectures,
+    evaluations, scores and evolution history are computed here.
     """
-    try:
-        return _run_demo(req.requirements, req.population_size, req.generations)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    requirements = (req.requirements or "").strip()
+    app_type = (req.application_type or "").strip()
 
-
-@app.get("/run-demo", response_model=Dict[str, Any])
-async def run_demo() -> Dict[str, Any]:
-    """Run the built-in showcase scenario and return the results."""
-    try:
-        req = OptimizeRequest()
-        return _run_demo(req.requirements, req.population_size, req.generations)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.get("/architecture/{architecture_name}", include_in_schema=False)
-async def get_architecture(architecture_name: str) -> Dict[str, Any]:
-    """Get details of a specific architecture by name."""
-    from archevolve.models.architecture import ArchitectureModel
+    if not requirements:
+        raise HTTPException(
+            status_code=422, detail="System requirements must not be empty."
+        )
+    if len(requirements) < 10:
+        raise HTTPException(
+            status_code=422,
+            detail="Please provide a more detailed description of the system requirements.",
+        )
 
     try:
-        arch = ArchitectureModel.create_monolith({"assumptions": ["Test scenario"]})
-    except Exception:
-        arch = ArchitectureModel.create_monolith()
+        return run_optimization(app_type, requirements, req.constraints)
+    except Exception as e:  # pragma: no cover - defensive
+        raise HTTPException(status_code=500, detail=f"Optimization failed: {e}")
 
-    return {
-        "name": arch.name,
-        "generation": arch.generation,
-        "components": [
-            {"name": c.name, "type": c.type, "managed": c.managed, "quantity": c.quantity}
-            for c in arch.components
-        ],
-        "deployment_strategy": arch.deployment_strategy,
-        "communication_pattern": arch.communication_pattern,
-        "design_rationale": arch.design_rationale,
-        "assumptions": arch.assumptions,
-    }
+
+@app.get("/results/{run_id}", include_in_schema=False)
+async def results_page(request: Request, run_id: str) -> HTMLResponse:
+    """Serve the results page for a specific run."""
+    return templates.TemplateResponse(
+        request, "results.html", {"title": "ARCHEVOLVE — Results", "run_id": run_id}
+    )
+
+
+@app.get("/api/results/{run_id}", response_model=Dict[str, Any])
+async def get_results(run_id: str) -> Dict[str, Any]:
+    """Return the persisted result for a run."""
+    result = load_run(run_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail=f"Run '{run_id}' not found.")
+    return result
+
+
+@app.get("/api/runs", response_model=List[RunSummary])
+async def list_runs(limit: int = 20) -> List[RunSummary]:
+    """List recent runs, newest first."""
+    import json
+
+    summaries: List[RunSummary] = []
+    directory = _runs_dir()
+    files = []
+    for name in os.listdir(directory):
+        if name.endswith(".json"):
+            path = os.path.join(directory, name)
+            files.append((os.path.getmtime(path), path))
+    files.sort(reverse=True)
+
+    for _, path in files[: max(1, min(limit, 100))]:
+        try:
+            with open(path) as f:
+                record = json.load(f)
+            results = record.get("results", {})
+            final = results.get("final_scores", {}).get("overall")
+            base = results.get("baseline", {}).get("overall") or 0
+            pct = ((final - base) / max(base, 1e-10) * 100) if final is not None else None
+            summaries.append(
+                RunSummary(
+                    run_id=record.get("run_id", ""),
+                    application_type=record.get("application_type", ""),
+                    created_at=record.get("created_at", ""),
+                    final_fitness=final,
+                    improvement_pct=round(pct, 2) if pct is not None else None,
+                )
+            )
+        except (json.JSONDecodeError, OSError):
+            continue
+    return summaries

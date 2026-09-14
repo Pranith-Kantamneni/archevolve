@@ -4,7 +4,7 @@ import json
 import csv
 import os
 import matplotlib.pyplot as plt
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple, Union
 
 from archevolve.requirements import parse_requirement
 from archevolve.generation.architecture_generator import ArchitectureGenerator
@@ -217,7 +217,7 @@ class ExperimentRunner:
         self.config = config
 
     def _run_baseline(self, raw_requirement: str) -> Dict[str, Any]:
-        """Run baseline: single architecture generated without evolutionary optimization."""
+        """Run baseline: single monolith generated without evolutionary optimization."""
         from archevolve.models.architecture import ArchitectureModel
         parsed = parse_requirement(raw_requirement)
         architecture = ArchitectureModel.create_monolith(
@@ -248,7 +248,8 @@ class ExperimentRunner:
         }
 
     def _run_arch_evolve(
-        self, raw_requirement: str
+        self, raw_requirement: str, application_type: Optional[str] = None,
+        constraints: Optional[Dict[str, Any]] = None,
     ) -> Dict[str, Any]:
         """Run ARCHEVOLVE: evolutionary process generating optimized architecture."""
         engine = EvolutionEngine(
@@ -259,6 +260,8 @@ class ExperimentRunner:
             weights=self.config.weights,
             use_llm=self.config.use_llm,
             stopping_threshold=self.config.stopping_threshold,
+            application_type=application_type or "",
+            constraints=constraints or {},
         )
         results = engine.run(raw_requirement)
         return {
@@ -283,17 +286,34 @@ class ExperimentRunner:
             ),
         }
 
-    def run_scenario(self, raw_requirement: str) -> Dict[str, Any]:
-        """Run a single scenario: both Baseline and ARCHEVOLVE."""
-        # Run baseline
+    def run_scenario(
+        self,
+        raw_requirement: str,
+        application_type: Optional[str] = None,
+        constraints: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Run a single scenario: both Baseline and ARCHEVOLVE.
+
+        Args:
+            raw_requirement: Free-text system requirements
+            application_type: Optional application/system type for domain-aware design
+            constraints: Optional structured constraints
+
+        Returns:
+            Combined baseline + ARCHEVOLVE results
+        """
+        # Run baseline (naive monolith without evolutionary optimization)
         baseline = self._run_baseline(raw_requirement)
 
         # Run ARCHEVOLVE
-        arch_evolve = self._run_arch_evolve(raw_requirement)
+        arch_evolve = self._run_arch_evolve(
+            raw_requirement, application_type, constraints
+        )
 
         # Combine results
         combined = {
             "raw_requirement": raw_requirement,
+            "application_type": application_type or "",
             "baseline": baseline,
             "arch_evolve": arch_evolve,
         }
@@ -321,13 +341,40 @@ class ExperimentRunner:
 
         return combined
 
-    def run_experiments(self, scenarios: List[str]) -> ExperimentResults:
-        """Run experiments for multiple scenarios."""
+    def run_experiments(
+        self,
+        scenarios: List[Union[str, Dict[str, Any], List[Any]]],
+    ) -> ExperimentResults:
+        """Run experiments for multiple scenarios.
+
+        Each scenario may be:
+          * a plain requirement string (application type auto-detected),
+          * a dict: {"requirement": ..., "application_type": ..., "constraints": ...},
+          * a list/tuple: [requirement, application_type, constraints]
+
+        Returns:
+            ExperimentResults containing per-scenario baseline + ARCHEVOLVE runs.
+        """
         results = ExperimentResults()
         for scenario in scenarios:
-            scenario_results = self.run_scenario(scenario)
+            requirement, app_type, constraints = self._normalize_scenario(scenario)
+            scenario_results = self.run_scenario(requirement, app_type, constraints)
             results.add_scenario(scenario_results)
         return results
+
+    @staticmethod
+    def _normalize_scenario(scenario: Any) -> Tuple[str, Optional[str], Optional[Dict[str, Any]]]:
+        """Normalize a scenario definition into (requirement, app_type, constraints)."""
+        if isinstance(scenario, dict):
+            return (
+                scenario.get("requirement", "") or "",
+                scenario.get("application_type"),
+                scenario.get("constraints"),
+            )
+        if isinstance(scenario, (list, tuple)):
+            padded = list(scenario) + [None, None]
+            return str(padded[0]), padded[1], padded[2]
+        return str(scenario), None, None
 
     @staticmethod
     def _log(msg: str) -> None:

@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARCHEVOLVE — Result</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div>ARCHEVOLVE<small>Automated Software System Design</small></div>
+    </div>
+    <nav class="nav">
+      <a href="/">Home</a>
+      <a href="/">New Design</a>
+      <a href="#" class="active" id="nav-current">Results</a>
+    </nav>
+  </div>
+</header>
+
+<main class="container">
+  <div id="loading" class="card">
+    <div class="flex"><span class="status-dot g"></span><span class="muted">Loading run results…</span></div>
+  </div>
+  <div id="error" class="hidden"></div>
+
+  <div id="content" class="hidden">
+    <!-- Result header -->
+    <div class="card" style="margin-bottom:18px;border-left:3px solid var(--accent);">
+      <div class="flex between">
+        <div>
+          <div class="section-label">ARCHEVOLVE Result</div>
+          <h1 id="r-app" style="font-size:26px;font-weight:800;">—</h1>
+          <p id="r-req" class="section-sub" style="max-width:760px;margin-top:6px;">—</p>
+          <div id="r-constraints" class="chips" style="margin-top:10px;"></div>
+        </div>
+        <div class="center">
+          <div class="muted2" style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Run ID</div>
+          <div class="mono" id="r-runid" style="font-weight:700;">—</div>
+          <div class="muted2" id="r-created" style="font-size:12px;margin-top:4px;">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 1. Overview -->
+    <section class="card" style="margin-bottom:18px;">
+      <div class="section-label">Section 1</div>
+      <div class="section-title">Result Overview</div>
+      <p class="section-sub mb16">Summary produced by the evolutionary run.</p>
+      <div class="grid cols6" id="overview"></div>
+    </section>
+
+    <!-- 2. Parsed requirements -->
+    <section class="card" style="margin-bottom:18px;">
+      <div class="section-label">Section 2</div>
+      <div class="section-title">Parsed Requirements</div>
+      <p class="section-sub mb16">What ARCHEVOLVE extracted from your requirement text. Unspecified values are shown as “Not specified”.</p>
+      <div class="grid cols2">
+        <div><div id="parsed"></div></div>
+        <div>
+          <div class="muted2" style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:6px;">Original requirement</div>
+          <div id="parsed-original" class="card" style="background:var(--panel2);font-size:13.5px;color:var(--muted);"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Final architecture -->
+    <section class="card" style="margin-bottom:18px;">
+      <div class="section-label">Section 3</div>
+      <div class="section-title">Final Architecture</div>
+      <p class="section-sub mb16">Diagram generated directly from the architecture data (components + derived connections).</p>
+      <div class="flex between mb16">
+        <div class="flex">
+          <span class="pill blue" id="arch-name" style="font-size:14px;padding:6px 16px;">—</span>
+          <span class="pill" id="arch-pattern">—</span>
+          <span class="pill" id="arch-deploy">—</span>
+        </div>
+      </div>
+      <div class="diagram-wrap mb16" id="diagram"></div>
+      <div class="legend mb16" id="diagram-legend"></div>
+      <div class="grid cols2">
+        <div>
+          <div class="muted2" style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Components</div>
+          <div class="comp-grid" id="components"></div>
+        </div>
+        <div>
+          <div class="muted2" style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:8px;">Design rationale</div>
+          <p id="arch-rationale" class="section-sub"></p>
+          <div class="muted2" style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;margin:14px 0 6px;">Key assumptions</div>
+          <ul id="arch-assumptions" class="report" style="margin-left:18px;"></ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- 4. Multi-objective scores -->
+    <section class="card" style="margin-bottom:18px;">
+      <div class="section-label">Section 4</div>
+      <div class="section-title">Multi-Objective Scores</div>
+      <p class="section-sub mb16">Final architecture scores from the existing ARCHEVOLVE evaluators.</p>
+      <div class="grid cols2">
+        <div id="score-bars"></div>
+        <div class="center">
+          <div id="radar" class="chart" style="display:flex;justify-content:center;"></div>
+          <div class="mt8">
+            <span class="muted2" style="font-size:11px;text-transform:uppercase;letter-spacing:0.06em;">Overall Fitness</span>
+            <div id="overall-fitness" style="font-size:34px;font-weight:800;color:var(--green);">—</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 5. Baseline vs final -->
+    <section class="card" style="margin-bottom:18px;">
+      <div class="section-label">Section 5</div>
+      <div class="section-title">Baseline vs Final</div>
+      <p class="section-sub mb16">
+        This comparison measures the change produced by the evolutionary process under the
+        project’s scoring model. It is not a claim of universal superiority.
+      </p>
+      <div class="grid cols2">
+        <div>
+          <table>
+            <thead><tr><th>Objective</th><th>Baseline</th><th>Final</th><th>Improvement</th></tr></thead>
+            <tbody id="compare-table"></tbody>
+          </table>
+        </div>
+        <div id="compare-chart" class="chart"></div>
+      </div>
+    </section>
+
+    <!-- 6. Candidate architectures -->
+    <section class="card" style="margin-bottom:18px;">
+      <div class="section-label">Section 6</div>
+      <div class="section-title">Candidate Architectures</div>
+      <p class="section-sub mb16">The initial population generated for this input. Selected candidates are highlighted.</p>
+      <div class="grid cols3" id="candidates"></div>
+    </section>
+
+    <!-- 7. Evolution history -->
+    <section class="card" style="margin-bottom:18px;">
+      <div class="section-label">Section 7</div>
+      <div class="section-title">Evolution History</div>
+      <p class="section-sub mb16">Fitness progression across generations (Generate → Evaluate → Select → Improve → Repeat).</p>
+      <div id="fitness-line" class="chart mb16"></div>
+      <div class="gen-timeline" id="timeline"></div>
+    </section>
+
+    <!-- 8. What changed -->
+    <section class="card" style="margin-bottom:18px;">
+      <div class="section-label">Section 8</div>
+      <div class="section-title">What Changed?</div>
+      <p class="section-sub mb16">Mutations applied by ARCHEVOLVE and the reasoning behind each one.</p>
+      <div id="changes"></div>
+    </section>
+
+    <!-- 9. Experience memory -->
+    <section class="card" style="margin-bottom:18px;">
+      <div class="section-label">Section 9</div>
+      <div class="section-title">Relevant Design Experiences Used During Evolution</div>
+      <p class="section-sub mb16">Experience memory consulted during mutation.</p>
+      <ul class="exp-list" id="experience"></ul>
+      <div class="muted2 mt8" id="exp-count" style="font-size:12px;"></div>
+    </section>
+
+    <!-- 10. Design report -->
+    <section class="card">
+      <div class="section-label">Section 10</div>
+      <div class="section-title">Final Design Report</div>
+      <p class="section-sub mb16">A consolidated report of the run: requirements, candidates, scores, evolution and final design.</p>
+      <button class="btn btn-primary" id="open-report">View Design Report</button>
+    </section>
+  </div>
+</main>
+
+<footer class="site">ARCHEVOLVE — deterministic mode · results generated by the backend engine</footer>
+
+<div class="modal-backdrop hidden" id="report-modal">
+  <div class="modal">
+    <div class="modal-head">
+      <h3>ARCHEVOLVE Design Report</h3>
+      <div class="flex">
+        <button class="btn btn-ghost" id="print-report" style="padding:7px 14px;font-size:13px;">Print / Save PDF</button>
+        <button class="btn-close" id="close-report">×</button>
+      </div>
+    </div>
+    <div class="modal-body report" id="report-body"></div>
+  </div>
+</div>
+
+<script>
+  const RUN_ID = "{{ run_id }}";
+  const OBJS = ["cost", "security", "reliability", "performance", "scalability"];
+  const LABEL = { cost: "Cost", security: "Security", reliability: "Reliability", performance: "Performance", scalability: "Scalability" };
+  const COLOR = {
+    client: "#93a1b3", gateway: "#4d9fff", security: "#f85149", service: "#f0883e",
+    application: "#6d5efc", compute: "#39c5cf", realtime: "#39c5cf", messaging: "#bc8cff",
+    database: "#3fb950", datastore: "#3fb950", cache: "#d29922", "load balancer": "#4d9fff", other: "#93a1b3"
+  };
+  let DATA = null;
+
+  const $ = id => document.getElementById(id);
+  const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const f1 = n => (n == null ? "—" : Number(n).toFixed(1));
+
+  function showError(msg) {
+    $("loading").classList.add("hidden");
+    const e = $("error");
+    e.classList.remove("hidden");
+    e.innerHTML = '<div class="card" style="border-color:rgba(248,81,73,0.5)"><h2 style="color:var(--red)">Unable to load result</h2>' +
+      '<p class="section-sub mt8">' + esc(msg) + '</p>' +
+      '<p class="mt16"><a class="btn btn-ghost" href="/">← Start a new design</a></p></div>';
+  }
+
+  async function init() {
+    try {
+      const r = await fetch("/api/results/" + RUN_ID);
+      if (!r.ok) {
+        if (r.status === 404) return showError("Run '" + RUN_ID + "' was not found. It may have been removed or never generated.");
+        return showError("Server returned status " + r.status + ".");
+      }
+      DATA = await r.json();
+      render(DATA);
+      $("loading").classList.add("hidden");
+      $("content").classList.remove("hidden");
+    } catch (err) {
+      showError("Could not reach the ARCHEVOLVE backend: " + err.message);
+    }
+  }
+
+  function render(d) {
+    const base = d.baseline || {}, fin = d.final_scores || {}, imp = d.improvement || {};
+    const arch = d.final_architecture || {}, hist = d.evolution_history || {};
+    const gens = hist.generations_run || 0;
+    const cands = hist.candidates_evaluated || d.initial_candidates?.length || 0;
+    const absOverall = (fin.overall || 0) - (base.overall || 0);
+    const pctOverall = absOverall / Math.max(base.overall || 0, 1e-10) * 100;
+
+    // Header
+    $("r-app").textContent = d.application_type || "System architecture";
+    $("r-req").textContent = d.raw_requirement || "";
+    $("r-runid").textContent = d.run_id || RUN_ID;
+    $("r-created").textContent = d.created_at ? "" : "";
+    const cchips = $("r-constraints");
+    const cons = d.constraints || {};
+    const chipList = [];
+    if (cons.provider) chipList.push(["Provider: " + cons.provider, "blue"]);
+    if (cons.max_budget) chipList.push(["Budget: $" + cons.max_budget, "green"]);
+    if (cons.database) chipList.push(["DB: " + cons.database, "yellow"]);
+    if (cons.compliance) cons.compliance.forEach(c => chipList.push(["Compliance: " + c, "red"]));
+    if (cons.technologies) cons.technologies.forEach(t => chipList.push([t, "purple"]));
+    if (cons.deployment) chipList.push(["Deploy: " + cons.deployment, "cyan"]);
+    cchips.innerHTML = chipList.map(([t, c]) => '<span class="pill ' + c + '">' + esc(t) + '</span>').join("");
+
+    // Section 1 overview
+    $("overview").innerHTML = [
+      kpi("Best Architecture", esc(arch.name || "—"), "winning candidate", "accent small"),
+      kpi("Baseline Fitness", f1(base.overall), "initial population", ""),
+      kpi("Final Fitness", f1(fin.overall), "optimized", "good"),
+      kpi("Improvement", (pctOverall >= 0 ? "+" : "") + pctOverall.toFixed(1) + "%", (absOverall >= 0 ? "+" : "") + absOverall.toFixed(1) + " pts", "purple"),
+      kpi("Generations", String(gens), "evolutionary cycles", ""),
+      kpi("Candidates", String(cands), "evaluated", "")
+    ].join("");
+
+    // Section 2 parsed requirements
+    const pr = d.parsed_requirements || {};
+    const rows = [
+      ["Expected Users", pr.expected_users ? Number(pr.expected_users).toLocaleString() : null],
+      ["Security Level", pr.security_level],
+      ["Availability", pr.availability_percentage ? pr.availability_percentage + "%" : null],
+      ["Maximum Latency", pr.max_latency_ms ? pr.max_latency_ms + " ms" : null],
+      ["Scalability", pr.scalability_type],
+      ["Authentication", pr.authentication_required ? "Required" : "Not specified"],
+      ["Encryption", pr.data_encryption_required ? "Required" : "Not specified"],
+      ["Cost Sensitive", pr.cost_sensitive ? "Yes" : "No"],
+      ["Deployment", pr.deployment_environment],
+      ["Compliance", (pr.compliance_requirements && pr.compliance_requirements.length) ? pr.compliance_requirements.join(", ") : null],
+      ["Preferred Tech", (pr.preferred_technologies && pr.preferred_technologies.length) ? pr.preferred_technologies.join(", ") : null],
+      ["Max Monthly Cost", pr.max_monthly_cost ? "$" + Number(pr.max_monthly_cost).toLocaleString() : null],
+    ];
+    $("parsed").innerHTML = '<table><tbody>' + rows.map(([k, v]) =>
+      "<tr><td class='muted'>" + esc(k) + "</td><td><b>" + (v ? esc(v) : '<span class="muted2">Not specified</span>') + "</b></td></tr>"
+    ).join("") + "</tbody></table>";
+    $("parsed-original").textContent = d.raw_requirement || "—";
+
+    // Section 3 final architecture
+    $("arch-name").textContent = arch.name || "—";
+    $("arch-pattern").textContent = "Pattern: " + (arch.communication_pattern || "—");
+    $("arch-deploy").textContent = "Deploy: " + (arch.deployment_strategy || "—");
+    $("diagram").innerHTML = renderDiagram(arch.components || [], arch.connections || []);
+    $("diagram-legend").innerHTML = legendFor(arch.components || []);
+    $("components").innerHTML = (arch.components || []).map(c => {
+      const cls = (c.type || "other").replace(/ /g, "-");
+      return '<div class="comp-card t-' + cls + '"><div class="ct">' + esc(c.type) + '</div>' +
+        '<div class="cn">' + esc(c.name) + '</div>' +
+        '<div class="cm">' + (c.managed ? "managed" : "self-hosted") +
+        (c.quantity > 1 ? ' · <span class="cq">×' + c.quantity + '</span>' : '') + '</div></div>';
+    }).join("") || '<p class="muted2">No components</p>';
+    $("arch-rationale").textContent = arch.design_rationale || "—";
+    $("arch-assumptions").innerHTML = (arch.assumptions || []).map(a => "<li>" + esc(a) + "</li>").join("") || "<li class='muted2'>None</li>";
+
+    // Section 4 scores
+    $("score-bars").innerHTML = OBJS.map(o =>
+      '<div class="bar-row"><div class="name">' + LABEL[o] + '</div>' +
+      '<div class="bar-track"><div class="bar-fill ' + o + '" style="width:' + (fin[o] || 0) + '%"></div></div>' +
+      '<div class="val">' + f1(fin[o]) + '</div></div>'
+    ).join("");
+    $("radar").innerHTML = renderRadar(fin);
+    $("overall-fitness").textContent = f1(fin.overall);
+
+    // Section 5 comparison
+    const cmpRows = OBJS.map(o => {
+      const i = imp[o] || { initial: base[o] || 0, final: fin[o] || 0, absolute: (fin[o] || 0) - (base[o] || 0), percentage: 0 };
+      const cls = i.absolute > 0 ? "up" : (i.absolute < 0 ? "down" : "flat");
+      const arrow = i.absolute > 0 ? "▲" : (i.absolute < 0 ? "▼" : "•");
+      return "<tr><td>" + LABEL[o] + "</td><td>" + f1(base[o]) + "</td><td>" + f1(fin[o]) + "</td>" +
+        '<td class="' + cls + '">' + arrow + " " + (i.absolute >= 0 ? "+" : "") + f1(i.absolute) +
+        ' <span style="font-weight:400">(' + (i.percentage >= 0 ? "+" : "") + i.percentage.toFixed(1) + '%)</span></td></tr>';
+    }).join("");
+    const oc = absOverall > 0 ? "up" : (absOverall < 0 ? "down" : "flat");
+    $("compare-table").innerHTML = cmpRows +
+      '<tr><td><b>Overall Fitness</b></td><td>' + f1(base.overall) + "</td><td>" + f1(fin.overall) +
+      '</td><td class="' + oc + '"><b>▲ +' + f1(absOverall) + " (" + pctOverall.toFixed(1) + "%)</b></td></tr>";
+    $("compare-chart").innerHTML = renderComparison(base, fin);
+
+    // Section 6 candidates
+    const selectedNames = new Set();
+    (d.generation_history || []).forEach(g => (g.selected || []).forEach(s => selectedNames.add(s.name)));
+    $("candidates").innerHTML = (d.initial_candidates || []).map(c => {
+      const sel = selectedNames.has(c.name);
+      const os = c.objective_scores || {};
+      const bars = OBJS.map(o =>
+        '<div class="mini-row"><span>' + LABEL[o] + '</span><div class="mini-track">' +
+        '<div class="mini-fill" style="width:' + (os[o] || 0) + '%"></div></div><span>' + f1(os[o]) + '</span></div>'
+      ).join("");
+      return '<div class="candidate ' + (sel ? "selected" : "") + '">' +
+        '<div class="c-head"><div><div class="c-name">' + esc(c.name) + '</div>' +
+        (sel ? '<span class="pill green" style="margin-top:4px;">selected for mutation</span>' : '<span class="pill">initial candidate</span>') +
+        '</div><div class="c-fit">' + f1(c.fitness) + '</div></div>' +
+        '<div class="mini-bars">' + bars + '</div></div>';
+    }).join("") || '<p class="muted2">No candidates recorded</p>';
+
+    // Section 7 evolution
+    const prog = hist.fitness_progression || [];
+    $("fitness-line").innerHTML = renderLine(prog);
+    $("timeline").innerHTML = renderTimeline(d.generation_history || []);
+
+    // Section 8 changes
+    $("changes").innerHTML = renderChanges(d.generation_history || []);
+
+    // Section 9 experience
+    const exp = d.experience_used || [];
+    $("experience").innerHTML = exp.length
+      ? exp.map(e => "<li>" + esc(e) + "</li>").join("")
+      : '<li class="muted2">No prior experience entries matched this candidate. Experience memory is populated as runs complete.</li>';
+    $("exp-count").textContent = "Experience memory contains " + (d.experience_memory_entries || 0) + " stored entries in total.";
+
+    // Report
+    $("report-body").innerHTML = buildReport(d);
+  }
+
+  function kpi(label, value, sub, cls) {
+    return '<div class="kpi ' + (cls || "") + '"><div class="k-label">' + esc(label) + '</div>' +
+      '<div class="k-value ' + (cls && cls.includes("small") ? "small" : "") + '">' + value + '</div>' +
+      '<div class="k-sub">' + esc(sub) + '</div></div>';
+  }
+
+  // ---------------- Architecture diagram ----------------
+  function renderDiagram(components, connections) {
+    const LAYER = { client: 0, gateway: 1, "load balancer": 1, security: 1, service: 2, application: 2, compute: 2, realtime: 2, messaging: 3, database: 4, datastore: 4, cache: 4, other: 2 };
+    const nodes = new Map();
+    components.forEach(c => nodes.set(c.name, { name: c.name, type: c.type, quantity: c.quantity }));
+    connections.forEach(e => {
+      [e.source, e.target].forEach(n => {
+        if (!nodes.has(n)) nodes.set(n, { name: n, type: n === "Clients" ? "client" : "other" });
+      });
+    });
+    if (!nodes.size) return '<p class="muted2">No architecture data</p>';
+
+    const W = 170, H = 50, GAPX = 28, GAPY = 78, PADX = 30, PADY = 28;
+    const layers = [[], [], [], [], []];
+    nodes.forEach(n => { const l = LAYER[n.type] ?? 2; layers[l].push(n); });
+    const maxCount = Math.max(...layers.map(l => l.length), 1);
+    const width = Math.max(760, maxCount * (W + GAPX) + PADX * 2);
+    const rows = layers.filter(l => l.length).length;
+    const activeLayers = layers.map((l, i) => ({ l, i })).filter(x => x.l.length);
+    const pos = new Map();
+    activeLayers.forEach((entry, rowIdx) => {
+      const row = entry.l;
+      const totalW = row.length * W + Math.max(0, row.length - 1) * GAPX;
+      const startX = (width - totalW) / 2;
+      row.forEach((n, i) => {
+        pos.set(n.name, { x: startX + i * (W + GAPX), y: PADY + rowIdx * GAPY, row: rowIdx });
+      });
+    });
+    const height = PADY * 2 + (activeLayers.length - 1) * GAPY + H;
+
+    let edges = "";
+    const edgeColor = { request: "#4d9fff", route: "#4d9fff", protect: "#f85149", filter: "#f85149", publish: "#bc8cff", stream: "#39c5cf", cache: "#d29922", "read/write": "#3fb950" };
+    connections.forEach(e => {
+      const s = pos.get(e.source), t = pos.get(e.target);
+      if (!s || !t) return;
+      const x1 = s.x + W / 2, y1 = s.y + H, x2 = t.x + W / 2, y2 = t.y;
+      let d;
+      if (Math.abs(s.row - t.row) <= 1) {
+        const my = (y1 + y2) / 2;
+        d = "M" + x1 + " " + y1 + " C" + x1 + " " + my + "," + x2 + " " + my + "," + x2 + " " + y2;
+      } else {
+        const mx = x2 + (x2 >= x1 ? 60 : -60);
+        d = "M" + x1 + " " + y1 + " C" + x1 + " " + (y1 + 24) + "," + mx + " " + (y2 - 24) + "," + x2 + " " + y2;
+      }
+      const col = edgeColor[e.kind] || "#4a5a6e";
+      edges += '<path d="' + d + '" fill="none" stroke="' + col + '" stroke-width="1.5" opacity="0.55" marker-end="url(#arrow)"/>';
+    });
+
+    let rects = "";
+    nodes.forEach(n => {
+      const p = pos.get(n.name); if (!p) return;
+      const col = COLOR[n.type] || COLOR.other;
+      const qty = n.quantity > 1 ? " ×" + n.quantity : "";
+      rects += '<g>' +
+        '<rect x="' + p.x + '" y="' + p.y + '" rx="10" ry="10" width="' + W + '" height="' + H + '" fill="#1b2432" stroke="' + col + '" stroke-width="1.6"/>' +
+        '<rect x="' + p.x + '" y="' + p.y + '" rx="3" ry="3" width="5" height="' + H + '" fill="' + col + '"/>' +
+        '<text x="' + (p.x + W / 2) + '" y="' + (p.y + 20) + '" text-anchor="middle" fill="#e6edf3" font-size="12.5" font-weight="600" font-family="sans-serif">' + esc(shorten(n.name, 20)) + '</text>' +
+        '<text x="' + (p.x + W / 2) + '" y="' + (p.y + 36) + '" text-anchor="middle" fill="#93a1b3" font-size="10.5" font-family="sans-serif">' + esc(n.type + qty) + '</text>' +
+        '</g>';
+    });
+
+    return '<svg viewBox="0 0 ' + width + ' ' + height + '" width="' + width + '" height="' + height + '" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs><marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">' +
+      '<path d="M0 0 L10 5 L0 10 z" fill="#4a5a6e"/></marker></defs>' +
+      edges + rects + '</svg>';
+  }
+
+  function shorten(s, n) { return s.length > n ? s.slice(0, n - 1) + "…" : s; }
+
+  function legendFor(components) {
+    const types = [...new Set(components.map(c => c.type))];
+    return types.map(t => '<span><span class="dot" style="background:' + (COLOR[t] || COLOR.other) + '"></span>' + esc(t) + '</span>').join("");
+  }
+
+  // ---------------- Charts ----------------
+  function renderRadar(scores) {
+    const cx = 175, cy = 165, R = 115, n = OBJS.length;
+    const angle = i => (-90 + i * (360 / n)) * Math.PI / 180;
+    let rings = "";
+    [0.25, 0.5, 0.75, 1].forEach(f => {
+      const pts = OBJS.map((_, i) => (cx + R * f * Math.cos(angle(i))) + "," + (cy + R * f * Math.sin(angle(i)))).join(" ");
+      rings += '<polygon points="' + pts + '" fill="none" stroke="#2a3646" stroke-width="1"/>';
+    });
+    let axes = "", labels = "", poly = [];
+    OBJS.forEach((o, i) => {
+      const x = cx + R * Math.cos(angle(i)), y = cy + R * Math.sin(angle(i));
+      axes += '<line x1="' + cx + '" y1="' + cy + '" x2="' + x + '" y2="' + y + '" stroke="#2a3646"/>';
+      const lx = cx + (R + 20) * Math.cos(angle(i)), ly = cy + (R + 20) * Math.sin(angle(i));
+      labels += '<text x="' + lx + '" y="' + (ly + 4) + '" text-anchor="middle" fill="#93a1b3" font-size="11" font-family="sans-serif">' + LABEL[o] + '</text>';
+      const v = (scores[o] || 0) / 100;
+      poly.push((cx + R * v * Math.cos(angle(i))) + "," + (cy + R * v * Math.sin(angle(i))));
+    });
+    return '<svg viewBox="0 0 350 330" width="350" height="330" xmlns="http://www.w3.org/2000/svg">' +
+      rings + axes +
+      '<polygon points="' + poly.join(" ") + '" fill="rgba(77,159,255,0.22)" stroke="#4d9fff" stroke-width="2"/>' +
+      labels + '</svg>';
+  }
+
+  function renderComparison(base, fin) {
+    const W = 460, H = 280, pad = 40, n = OBJS.length;
+    const plotW = W - pad * 2, plotH = H - pad * 2;
+    const groupW = plotW / n, barW = Math.min(30, groupW * 0.32);
+    let bars = "";
+    OBJS.forEach((o, i) => {
+      const cx = pad + groupW * i + groupW / 2;
+      const b = (base[o] || 0) / 100 * plotH, f = (fin[o] || 0) / 100 * plotH;
+      bars += '<rect x="' + (cx - barW - 2) + '" y="' + (pad + plotH - b) + '" width="' + barW + '" height="' + b + '" rx="3" fill="#556274"/>';
+      bars += '<rect x="' + (cx + 2) + '" y="' + (pad + plotH - f) + '" width="' + barW + '" height="' + f + '" rx="3" fill="#4d9fff"/>';
+      bars += '<text x="' + cx + '" y="' + (H - 14) + '" text-anchor="middle" fill="#93a1b3" font-size="10.5" font-family="sans-serif">' + LABEL[o].slice(0, 6) + '</text>';
+    });
+    let grid = "";
+    [0, 25, 50, 75, 100].forEach(v => {
+      const y = pad + plotH - (v / 100 * plotH);
+      grid += '<line x1="' + pad + '" y1="' + y + '" x2="' + (W - pad) + '" y2="' + y + '" stroke="#2a3646" stroke-dasharray="3 4"/>' +
+        '<text x="' + (pad - 6) + '" y="' + (y + 4) + '" text-anchor="end" fill="#6b7a8d" font-size="9.5" font-family="sans-serif">' + v + '</text>';
+    });
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="280" xmlns="http://www.w3.org/2000/svg">' + grid + bars +
+      '<rect x="' + (W - 130) + '" y="12" width="10" height="10" rx="2" fill="#556274"/><text x="' + (W - 116) + '" y="21" fill="#93a1b3" font-size="11" font-family="sans-serif">Baseline</text>' +
+      '<rect x="' + (W - 130) + '" y="30" width="10" height="10" rx="2" fill="#4d9fff"/><text x="' + (W - 116) + '" y="39" fill="#93a1b3" font-size="11" font-family="sans-serif">Final</text>' +
+      '</svg>';
+  }
+
+  function renderLine(prog) {
+    if (!prog || !prog.length) return '<p class="muted2">No progression data</p>';
+    const W = 820, H = 280, pad = 46;
+    const plotW = W - pad * 2, plotH = H - pad * 2;
+    const minV = Math.min(...prog, 0), maxV = Math.max(...prog, 100);
+    const lo = Math.max(0, Math.floor(minV / 10) * 10 - 5);
+    const hi = Math.min(100, Math.ceil(maxV / 10) * 10 + 5);
+    const span = Math.max(hi - lo, 1);
+    const x = i => pad + (prog.length === 1 ? plotW / 2 : (i / (prog.length - 1)) * plotW);
+    const y = v => pad + plotH - ((v - lo) / span) * plotH;
+    let grid = "";
+    for (let g = 0; g <= 5; g++) {
+      const val = lo + (span * g / 5);
+      const yy = y(val);
+      grid += '<line x1="' + pad + '" y1="' + yy + '" x2="' + (W - pad) + '" y2="' + yy + '" stroke="#2a3646" stroke-dasharray="3 4"/>' +
+        '<text x="' + (pad - 8) + '" y="' + (yy + 4) + '" text-anchor="end" fill="#6b7a8d" font-size="10" font-family="sans-serif">' + val.toFixed(0) + '</text>';
+    }
+    const pts = prog.map((v, i) => x(i) + "," + y(v)).join(" ");
+    let dots = "", labels = "";
+    prog.forEach((v, i) => {
+      dots += '<circle cx="' + x(i) + '" cy="' + y(v) + '" r="4.5" fill="#4d9fff" stroke="#0b0f17" stroke-width="2"/>' +
+        '<text x="' + x(i) + '" y="' + (y(v) - 12) + '" text-anchor="middle" fill="#e6edf3" font-size="11" font-weight="600" font-family="sans-serif">' + v.toFixed(1) + '</text>';
+      labels += '<text x="' + x(i) + '" y="' + (H - 14) + '" text-anchor="middle" fill="#93a1b3" font-size="11" font-family="sans-serif">G' + i + '</text>';
+    });
+    return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" height="280" xmlns="http://www.w3.org/2000/svg">' +
+      grid + '<polyline points="' + pts + '" fill="none" stroke="#4d9fff" stroke-width="2.5"/>' + dots + labels + '</svg>';
+  }
+
+  // ---------------- Timeline / changes ----------------
+  function renderTimeline(gens) {
+    if (!gens.length) return '<p class="muted2">No generation history</p>';
+    return gens.map((g, idx) => {
+      const fit = g.best_fitness != null ? f1(g.best_fitness) : "—";
+      const best = g.best_architecture || "—";
+      let body = "";
+      if (g.generation === 0) {
+        const sel = (g.selected || []).map(s => s.name).join(", ");
+        body = '<div class="g-title">Initial population evaluated</div>' +
+          '<p class="muted" style="font-size:13px;">Best at generation 0: <b>' + esc(best) + '</b> (fitness ' + fit + ').</p>' +
+          (sel ? '<p class="muted2" style="font-size:12px;margin-top:6px;">Selected for mutation: ' + esc(sel) + '</p>' : '');
+      } else {
+        const sel = (g.selected || []).map(s => s.name + " (" + f1(s.fitness) + ")").join(", ");
+        body = '<div class="g-title">Selected: ' + esc(sel || "—") + '</div>';
+        (g.offspring || []).forEach(o => {
+          body += '<div class="mutation"><div class="m-title">→ ' + esc(o.name) +
+            ' <span class="m-fit">fitness ' + f1(o.fitness) + '</span></div>' +
+            '<div class="m-mods">' + (o.modifications || []).map(esc).join(" · ") + '</div>' +
+            '<div class="m-reason">' + esc(o.reasoning || "") + '</div></div>';
+        });
+        body += '<p class="muted2" style="font-size:12px;margin-top:8px;">Best after generation ' + g.generation + ': <b style="color:var(--text)">' + esc(best) + '</b> (fitness ' + fit + ').</p>';
+      }
+      return '<div class="gen-item"><div class="gen-badge"><div class="g-num">Gen ' + g.generation + '</div><div class="g-fit">' + fit + '</div></div>' +
+        '<div class="gen-body">' + body + '</div></div>';
+    }).join("");
+  }
+
+  function renderChanges(gens) {
+    const items = [];
+    gens.filter(g => g.generation > 0).forEach(g => {
+      (g.offspring || []).forEach(o => items.push(o));
+    });
+    if (!items.length) return '<p class="muted2">No mutations were required for this run.</p>';
+    return items.map(o => {
+      const weak = (o.source_weaknesses || []).filter(w => w && w !== "no significant weaknesses identified");
+      return '<div class="mutation" style="margin:12px 0;"><div class="m-title">' + esc(o.name) +
+        ' <span class="m-fit">fitness ' + f1(o.fitness) + '</span></div>' +
+        '<div class="m-mods">' + (o.modifications || []).map(m => "• " + esc(m)).join("<br>") + '</div>' +
+        '<div class="m-reason">Reason: ' + esc(o.reasoning || "") + (weak.length ? ' (weaknesses: ' + esc(weak.join(", ")) + ')' : "") + '</div>' +
+        (o.experience_used && o.experience_used.length ? '<div class="m-reason">Experience: ' + esc(o.experience_used[0]) + '</div>' : '') +
+        '</div>';
+    }).join("");
+  }
+
+  // ---------------- Report ----------------
+  function buildReport(d) {
+    const base = d.baseline || {}, fin = d.final_scores || {}, imp = d.improvement || {};
+    const arch = d.final_architecture || {}, pr = d.parsed_requirements || {};
+    const hist = d.evolution_history || {};
+    const absOverall = (fin.overall || 0) - (base.overall || 0);
+    const pct = absOverall / Math.max(base.overall || 0, 1e-10) * 100;
+    const objRows = OBJS.map(o => "<tr><td>" + LABEL[o] + "</td><td>" + f1(base[o]) + "</td><td>" + f1(fin[o]) + "</td><td>" + (imp[o] ? (imp[o].absolute >= 0 ? "+" : "") + f1(imp[o].absolute) + " (" + imp[o].percentage.toFixed(1) + "%)" : "—") + "</td></tr>").join("");
+    const cands = (d.initial_candidates || []).map(c => "<li>" + esc(c.name) + " — fitness " + f1(c.fitness) + "</li>").join("");
+    const changes = [];
+    (d.generation_history || []).filter(g => g.generation > 0).forEach(g => (g.offspring || []).forEach(o => changes.push("<li>" + esc(o.name) + ": " + (o.modifications || []).map(esc).join("; ") + " — <i>" + esc(o.reasoning || "") + "</i></li>")));
+    const exps = (d.experience_used || []).map(e => "<li>" + esc(e) + "</li>").join("") || "<li>None matched.</li>";
+    const prog = (hist.fitness_progression || []).map((v, i) => "G" + i + " = " + f1(v)).join(", ");
+
+    return '' +
+      '<div class="report-head"><h1>ARCHEVOLVE Design Report</h1>' +
+      '<p class="muted">Application: <b>' + esc(d.application_type || "—") + '</b> · Run: <span class="mono">' + esc(d.run_id || RUN_ID) + '</span></p></div>' +
+      '<h2>1. Requirements</h2><p>' + esc(d.raw_requirement || "") + '</p>' +
+      (d.constraints && Object.keys(d.constraints).length ? '<p class="muted2">Constraints: ' + esc(JSON.stringify(d.constraints)) + '</p>' : '') +
+      '<h2>2. Parsed Requirements</h2><ul>' +
+        '<li>Expected users: ' + (pr.expected_users ? Number(pr.expected_users).toLocaleString() : "Not specified") + '</li>' +
+        '<li>Security: ' + esc(pr.security_level || "Not specified") + '</li>' +
+        '<li>Availability: ' + (pr.availability_percentage ? pr.availability_percentage + "%" : "Not specified") + '</li>' +
+        '<li>Max latency: ' + (pr.max_latency_ms ? pr.max_latency_ms + " ms" : "Not specified") + '</li>' +
+        '<li>Scalability: ' + esc(pr.scalability_type || "Not specified") + '</li></ul>' +
+      '<h2>3. Candidate Architectures</h2><ul>' + (cands || "<li>None</li>") + '</ul>' +
+      '<h2>4. Evaluation Methodology</h2><p>The architecture is scored on five objectives (cost, security, reliability, performance, scalability) using deterministic heuristic evaluators. Overall fitness is the weighted average (equal weights by default).</p>' +
+      '<h2>5. Objective Scores</h2><table><thead><tr><th>Objective</th><th>Baseline</th><th>Final</th><th>Δ</th></tr></thead><tbody>' + objRows +
+        '<tr><td><b>Overall Fitness</b></td><td>' + f1(base.overall) + '</td><td>' + f1(fin.overall) + '</td><td><b>+' + f1(absOverall) + ' (' + pct.toFixed(1) + '%)</b></td></tr></tbody></table>' +
+      '<h2>6. Evolution History</h2><p>Generations run: ' + (hist.generations_run || 0) + ' · Candidates evaluated: ' + (hist.candidates_evaluated || 0) + '.</p><p>Fitness progression: ' + esc(prog || "—") + '</p>' +
+      '<h2>7. Selected Architecture</h2><p><b>' + esc(arch.name || "—") + '</b> (pattern: ' + esc(arch.communication_pattern || "—") + ', deployment: ' + esc(arch.deployment_strategy || "—") + ').</p>' +
+      '<h2>8. Mutations / Improvements</h2><ul>' + (changes.join("") || "<li>None</li>") + '</ul>' +
+      '<h2>9. Experience Memory</h2><ul>' + exps + '</ul>' +
+      '<h2>10. Final Architecture</h2><ul>' + (arch.components || []).map(c => "<li>" + esc(c.name) + " (" + esc(c.type) + (c.quantity > 1 ? ", ×" + c.quantity : "") + ")</li>").join("") + '</ul>' +
+      '<p class="muted">' + esc(arch.design_rationale || "") + '</p>' +
+      '<h2>11. Baseline Comparison</h2><p>Under the project scoring model, the evolved architecture improved overall fitness by ' + f1(absOverall) + ' points (' + pct.toFixed(1) + '%) over the initial baseline candidate. This is a relative comparison under this model, not a claim of universal superiority.</p>' +
+      '<h2>12. Limitations</h2><ul>' +
+        '<li>Scores come from deterministic heuristic evaluators, not production benchmarks.</li>' +
+        '<li>The evolutionary search uses rule-based mutations in deterministic mode.</li>' +
+        '<li>Results are reproducible for identical inputs; they are design guidance, not guarantees.</li></ul>';
+  }
+
+  $("open-report").addEventListener("click", () => $("report-modal").classList.remove("hidden"));
+  $("close-report").addEventListener("click", () => $("report-modal").classList.add("hidden"));
+  $("report-modal").addEventListener("click", e => { if (e.target === $("report-modal")) $("report-modal").classList.add("hidden"); });
+  $("print-report").addEventListener("click", () => window.print());
+  $("nav-current").addEventListener("click", e => e.preventDefault());
+
+  init();
+</script>
+</body>
+</html>

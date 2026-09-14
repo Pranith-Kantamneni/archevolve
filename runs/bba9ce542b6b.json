@@ -1,0 +1,3050 @@
+{
+  "run_id": "bba9ce542b6b",
+  "created_at": "2026-09-13T22:16:19",
+  "application_type": "E-commerce platform",
+  "requirements": "Build an e-commerce platform supporting 10,000 concurrent users with secure payments and high availability.",
+  "constraints_text": "",
+  "constraints": {},
+  "results": {
+    "raw_requirement": "Build an e-commerce platform supporting 10,000 concurrent users with secure payments and high availability.",
+    "application_type": "E-commerce platform",
+    "constraints": {},
+    "parsed_requirements": {
+      "functional": [
+        "e-commerce",
+        "platform",
+        "payment"
+      ],
+      "non_functional": [
+        "high availability",
+        "secure"
+      ],
+      "expected_users": 10000,
+      "max_latency_ms": null,
+      "availability_percentage": 99.9,
+      "security_level": "high",
+      "data_encryption_required": true,
+      "authentication_required": true,
+      "scalability_type": null,
+      "max_concurrent_streams": null,
+      "cost_sensitive": false,
+      "compliance_requirements": [],
+      "deployment_environment": null,
+      "preferred_technologies": [],
+      "max_monthly_cost": null
+    },
+    "baseline": {
+      "cost": 55,
+      "security": 87,
+      "reliability": 100,
+      "performance": 67,
+      "scalability": 100,
+      "overall": 81.8
+    },
+    "final_scores": {
+      "cost": 55,
+      "security": 87,
+      "reliability": 100,
+      "performance": 75,
+      "scalability": 100,
+      "overall": 83.4
+    },
+    "improvement": {
+      "cost": {
+        "initial": 55,
+        "final": 55,
+        "absolute": 0,
+        "percentage": 0.0
+      },
+      "security": {
+        "initial": 87,
+        "final": 87,
+        "absolute": 0,
+        "percentage": 0.0
+      },
+      "reliability": {
+        "initial": 100,
+        "final": 100,
+        "absolute": 0,
+        "percentage": 0.0
+      },
+      "performance": {
+        "initial": 67,
+        "final": 75,
+        "absolute": 8,
+        "percentage": 11.9403
+      },
+      "scalability": {
+        "initial": 100,
+        "final": 100,
+        "absolute": 0,
+        "percentage": 0.0
+      }
+    },
+    "final_architecture": {
+      "name": "Hybrid Architecture #2 (Unmanaged) (Consolidated)",
+      "generation": 2,
+      "fitness": 83.4,
+      "cost": 55,
+      "security": 87,
+      "reliability": 100,
+      "performance": 75,
+      "scalability": 100,
+      "overall_fitness": 83.4,
+      "services": [
+        "product",
+        "order",
+        "cart",
+        "payment",
+        "user",
+        "inventory"
+      ],
+      "communication_pattern": "async",
+      "deployment_strategy": "containerized",
+      "design_rationale": "Hybrid design keeping Product, Order, Cart as stable services while offloading bursty workloads to serverless functions. Balances operational control with elasticity.",
+      "assumptions": [
+        "Strong security requirements",
+        "E-commerce platform domain"
+      ],
+      "components": [
+        {
+          "name": "API Gateway",
+          "type": "gateway",
+          "quantity": 1,
+          "managed": true
+        },
+        {
+          "name": "Product Service",
+          "type": "service",
+          "quantity": 1,
+          "managed": false
+        },
+        {
+          "name": "Order Service",
+          "type": "service",
+          "quantity": 1,
+          "managed": false
+        },
+        {
+          "name": "Function Compute",
+          "type": "compute",
+          "quantity": 1,
+          "managed": false
+        },
+        {
+          "name": "PostgreSQL",
+          "type": "database",
+          "quantity": 1,
+          "managed": true
+        },
+        {
+          "name": "Redis",
+          "type": "cache",
+          "quantity": 1,
+          "managed": false
+        },
+        {
+          "name": "RabbitMQ",
+          "type": "messaging",
+          "quantity": 1,
+          "managed": false
+        },
+        {
+          "name": "WAF Firewall",
+          "type": "security",
+          "quantity": 1,
+          "managed": true
+        },
+        {
+          "name": "Secrets Vault",
+          "type": "security",
+          "quantity": 1,
+          "managed": true
+        }
+      ],
+      "connections": [
+        {
+          "source": "Clients",
+          "target": "API Gateway",
+          "kind": "request"
+        },
+        {
+          "source": "API Gateway",
+          "target": "Product Service",
+          "kind": "route"
+        },
+        {
+          "source": "API Gateway",
+          "target": "Order Service",
+          "kind": "route"
+        },
+        {
+          "source": "API Gateway",
+          "target": "Function Compute",
+          "kind": "route"
+        },
+        {
+          "source": "Product Service",
+          "target": "RabbitMQ",
+          "kind": "publish"
+        },
+        {
+          "source": "Order Service",
+          "target": "RabbitMQ",
+          "kind": "publish"
+        },
+        {
+          "source": "Product Service",
+          "target": "PostgreSQL",
+          "kind": "read/write"
+        },
+        {
+          "source": "Order Service",
+          "target": "PostgreSQL",
+          "kind": "read/write"
+        },
+        {
+          "source": "Product Service",
+          "target": "Redis",
+          "kind": "cache"
+        },
+        {
+          "source": "Order Service",
+          "target": "Redis",
+          "kind": "cache"
+        },
+        {
+          "source": "Clients",
+          "target": "WAF Firewall",
+          "kind": "filter"
+        },
+        {
+          "source": "WAF Firewall",
+          "target": "API Gateway",
+          "kind": "protect"
+        },
+        {
+          "source": "WAF Firewall",
+          "target": "Product Service",
+          "kind": "protect"
+        },
+        {
+          "source": "WAF Firewall",
+          "target": "Order Service",
+          "kind": "protect"
+        },
+        {
+          "source": "Clients",
+          "target": "Secrets Vault",
+          "kind": "filter"
+        },
+        {
+          "source": "Secrets Vault",
+          "target": "API Gateway",
+          "kind": "protect"
+        },
+        {
+          "source": "Secrets Vault",
+          "target": "Product Service",
+          "kind": "protect"
+        },
+        {
+          "source": "Secrets Vault",
+          "target": "Order Service",
+          "kind": "protect"
+        }
+      ]
+    },
+    "initial_candidates": [
+      {
+        "name": "Serverless",
+        "generation": 0,
+        "fitness": 81.8,
+        "objective_scores": {
+          "cost": 55,
+          "security": 87,
+          "reliability": 100,
+          "performance": 67,
+          "scalability": 100
+        },
+        "selected": true,
+        "components": [
+          {
+            "name": "API Gateway",
+            "type": "gateway",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Function Compute",
+            "type": "compute",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Managed Database",
+            "type": "database",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Managed Cache",
+            "type": "cache",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Event Queue",
+            "type": "messaging",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "WAF Firewall",
+            "type": "security",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Secrets Vault",
+            "type": "security",
+            "quantity": 1,
+            "managed": true
+          }
+        ],
+        "services": [
+          "product",
+          "order",
+          "cart",
+          "payment",
+          "user",
+          "inventory"
+        ],
+        "communication_pattern": "sync",
+        "deployment_strategy": "serverless"
+      },
+      {
+        "name": "Hybrid Architecture #2",
+        "generation": 0,
+        "fitness": 82.0,
+        "objective_scores": {
+          "cost": 48,
+          "security": 87,
+          "reliability": 100,
+          "performance": 75,
+          "scalability": 100
+        },
+        "selected": true,
+        "components": [
+          {
+            "name": "API Gateway",
+            "type": "gateway",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Product Service",
+            "type": "service",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "Order Service",
+            "type": "service",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "Cart Service",
+            "type": "service",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "Function Compute",
+            "type": "compute",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "PostgreSQL",
+            "type": "database",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Redis",
+            "type": "cache",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "RabbitMQ",
+            "type": "messaging",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "WAF Firewall",
+            "type": "security",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Secrets Vault",
+            "type": "security",
+            "quantity": 1,
+            "managed": true
+          }
+        ],
+        "services": [
+          "product",
+          "order",
+          "cart",
+          "payment",
+          "user",
+          "inventory"
+        ],
+        "communication_pattern": "async",
+        "deployment_strategy": "containerized"
+      },
+      {
+        "name": "Event-Driven #3",
+        "generation": 0,
+        "fitness": 80.2,
+        "objective_scores": {
+          "cost": 44,
+          "security": 87,
+          "reliability": 100,
+          "performance": 70,
+          "scalability": 100
+        },
+        "selected": false,
+        "components": [
+          {
+            "name": "API Gateway",
+            "type": "gateway",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Event Bus",
+            "type": "messaging",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "Product Service",
+            "type": "service",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "Order Service",
+            "type": "service",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "Cart Service",
+            "type": "service",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "Payment Service",
+            "type": "service",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "User Service",
+            "type": "service",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "Inventory Service",
+            "type": "service",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "PostgreSQL",
+            "type": "database",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Redis",
+            "type": "cache",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "WAF Firewall",
+            "type": "security",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Secrets Vault",
+            "type": "security",
+            "quantity": 1,
+            "managed": true
+          }
+        ],
+        "services": [
+          "product",
+          "order",
+          "cart",
+          "payment",
+          "user",
+          "inventory"
+        ],
+        "communication_pattern": "event-driven",
+        "deployment_strategy": "containerized"
+      },
+      {
+        "name": "Modular Monolith #4",
+        "generation": 0,
+        "fitness": 78.6,
+        "objective_scores": {
+          "cost": 64,
+          "security": 87,
+          "reliability": 90,
+          "performance": 67,
+          "scalability": 85
+        },
+        "selected": false,
+        "components": [
+          {
+            "name": "API Gateway",
+            "type": "gateway",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Product Application Layer",
+            "type": "application",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "PostgreSQL",
+            "type": "database",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Redis Cache",
+            "type": "cache",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "WAF Firewall",
+            "type": "security",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Secrets Vault",
+            "type": "security",
+            "quantity": 1,
+            "managed": true
+          }
+        ],
+        "services": [
+          "Product",
+          "Order",
+          "Cart",
+          "Payment",
+          "User",
+          "Inventory"
+        ],
+        "communication_pattern": "sync",
+        "deployment_strategy": "standard"
+      },
+      {
+        "name": "Microservices #5",
+        "generation": 0,
+        "fitness": 81.2,
+        "objective_scores": {
+          "cost": 44,
+          "security": 87,
+          "reliability": 100,
+          "performance": 75,
+          "scalability": 100
+        },
+        "selected": false,
+        "components": [
+          {
+            "name": "API Gateway",
+            "type": "gateway",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Product Service",
+            "type": "service",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "Order Service",
+            "type": "service",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "Cart Service",
+            "type": "service",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "Payment Service",
+            "type": "service",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "User Service",
+            "type": "service",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "Inventory Service",
+            "type": "service",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "PostgreSQL",
+            "type": "database",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Redis",
+            "type": "cache",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "RabbitMQ",
+            "type": "messaging",
+            "quantity": 1,
+            "managed": false
+          },
+          {
+            "name": "WAF Firewall",
+            "type": "security",
+            "quantity": 1,
+            "managed": true
+          },
+          {
+            "name": "Secrets Vault",
+            "type": "security",
+            "quantity": 1,
+            "managed": true
+          }
+        ],
+        "services": [
+          "product",
+          "order",
+          "cart",
+          "payment",
+          "user",
+          "inventory"
+        ],
+        "communication_pattern": "async",
+        "deployment_strategy": "containerized"
+      }
+    ],
+    "generation_history": [
+      {
+        "generation": 0,
+        "population_size": 5,
+        "best_fitness": 82.0,
+        "best_architecture": "Hybrid Architecture #2",
+        "population": [
+          {
+            "name": "Serverless",
+            "generation": 0,
+            "fitness": 81.8,
+            "objective_scores": {
+              "cost": 55,
+              "security": 87,
+              "reliability": 100,
+              "performance": 67,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Database",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Cache",
+                "type": "cache",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Event Queue",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "sync",
+            "deployment_strategy": "serverless"
+          },
+          {
+            "name": "Hybrid Architecture #2",
+            "generation": 0,
+            "fitness": 82.0,
+            "objective_scores": {
+              "cost": 48,
+              "security": 87,
+              "reliability": 100,
+              "performance": 75,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Product Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Order Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Cart Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis",
+                "type": "cache",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "RabbitMQ",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "async",
+            "deployment_strategy": "containerized"
+          },
+          {
+            "name": "Event-Driven #3",
+            "generation": 0,
+            "fitness": 80.2,
+            "objective_scores": {
+              "cost": 44,
+              "security": 87,
+              "reliability": 100,
+              "performance": 70,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Event Bus",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Product Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Order Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Cart Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Payment Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "User Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Inventory Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis",
+                "type": "cache",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "event-driven",
+            "deployment_strategy": "containerized"
+          },
+          {
+            "name": "Modular Monolith #4",
+            "generation": 0,
+            "fitness": 78.6,
+            "objective_scores": {
+              "cost": 64,
+              "security": 87,
+              "reliability": 90,
+              "performance": 67,
+              "scalability": 85
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Product Application Layer",
+                "type": "application",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis Cache",
+                "type": "cache",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "Product",
+              "Order",
+              "Cart",
+              "Payment",
+              "User",
+              "Inventory"
+            ],
+            "communication_pattern": "sync",
+            "deployment_strategy": "standard"
+          },
+          {
+            "name": "Microservices #5",
+            "generation": 0,
+            "fitness": 81.2,
+            "objective_scores": {
+              "cost": 44,
+              "security": 87,
+              "reliability": 100,
+              "performance": 75,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Product Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Order Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Cart Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Payment Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "User Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Inventory Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis",
+                "type": "cache",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "RabbitMQ",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "async",
+            "deployment_strategy": "containerized"
+          }
+        ]
+      },
+      {
+        "generation": 1,
+        "population_size": 6,
+        "best_fitness": 83.0,
+        "best_architecture": "Serverless (Unmanaged)",
+        "population": [
+          {
+            "name": "Hybrid Architecture #2",
+            "generation": 1,
+            "fitness": 82.0,
+            "objective_scores": {
+              "cost": 48,
+              "security": 87,
+              "reliability": 100,
+              "performance": 75,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Product Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Order Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Cart Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis",
+                "type": "cache",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "RabbitMQ",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "async",
+            "deployment_strategy": "containerized"
+          },
+          {
+            "name": "Serverless",
+            "generation": 1,
+            "fitness": 81.8,
+            "objective_scores": {
+              "cost": 55,
+              "security": 87,
+              "reliability": 100,
+              "performance": 67,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Database",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Cache",
+                "type": "cache",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Event Queue",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "sync",
+            "deployment_strategy": "serverless"
+          },
+          {
+            "name": "Hybrid Architecture #2 (Consolidated)",
+            "generation": 1,
+            "fitness": 82.6,
+            "objective_scores": {
+              "cost": 51,
+              "security": 87,
+              "reliability": 100,
+              "performance": 75,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Product Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Cart Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis",
+                "type": "cache",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "RabbitMQ",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "async",
+            "deployment_strategy": "containerized"
+          },
+          {
+            "name": "Hybrid Architecture #2 (Unmanaged)",
+            "generation": 1,
+            "fitness": 82.8,
+            "objective_scores": {
+              "cost": 52,
+              "security": 87,
+              "reliability": 100,
+              "performance": 75,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Product Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Order Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Cart Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "RabbitMQ",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "async",
+            "deployment_strategy": "containerized"
+          },
+          {
+            "name": "Serverless (Consolidated)",
+            "generation": 1,
+            "fitness": 81.8,
+            "objective_scores": {
+              "cost": 55,
+              "security": 87,
+              "reliability": 100,
+              "performance": 67,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Database",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Cache",
+                "type": "cache",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Event Queue",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "sync",
+            "deployment_strategy": "serverless"
+          },
+          {
+            "name": "Serverless (Unmanaged)",
+            "generation": 1,
+            "fitness": 83.0,
+            "objective_scores": {
+              "cost": 61,
+              "security": 87,
+              "reliability": 100,
+              "performance": 67,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Managed Database",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Cache",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Event Queue",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "sync",
+            "deployment_strategy": "serverless"
+          }
+        ],
+        "selected": [
+          {
+            "name": "Hybrid Architecture #2",
+            "generation": 0,
+            "fitness": 82.0,
+            "objective_scores": {
+              "cost": 48,
+              "security": 87,
+              "reliability": 100,
+              "performance": 75,
+              "scalability": 100
+            },
+            "selected": true,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Product Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Order Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Cart Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis",
+                "type": "cache",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "RabbitMQ",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "async",
+            "deployment_strategy": "containerized"
+          },
+          {
+            "name": "Serverless",
+            "generation": 0,
+            "fitness": 81.8,
+            "objective_scores": {
+              "cost": 55,
+              "security": 87,
+              "reliability": 100,
+              "performance": 67,
+              "scalability": 100
+            },
+            "selected": true,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Database",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Cache",
+                "type": "cache",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Event Queue",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "sync",
+            "deployment_strategy": "serverless"
+          }
+        ],
+        "offspring": [
+          {
+            "name": "Hybrid Architecture #2 (Consolidated)",
+            "generation": 1,
+            "fitness": 82.6,
+            "objective_scores": {
+              "cost": 51,
+              "security": 87,
+              "reliability": 100,
+              "performance": 75,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Product Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Cart Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis",
+                "type": "cache",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "RabbitMQ",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "async",
+            "deployment_strategy": "containerized",
+            "source_architecture": "Hybrid Architecture #2 (Consolidated)",
+            "modifications": [
+              "Consolidate services to reduce cost",
+              "Fitness improved 82.0 -> 82.6"
+            ],
+            "reasoning": "Targeted weak cost objective. Fitness 82.0 -> 82.6. Weaknesses: low cost (48.0).",
+            "source_weaknesses": [
+              "low cost (48.0)"
+            ],
+            "experience_used": [
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: "
+            ]
+          },
+          {
+            "name": "Hybrid Architecture #2 (Unmanaged)",
+            "generation": 1,
+            "fitness": 82.8,
+            "objective_scores": {
+              "cost": 52,
+              "security": 87,
+              "reliability": 100,
+              "performance": 75,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Product Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Order Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Cart Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "RabbitMQ",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "async",
+            "deployment_strategy": "containerized",
+            "source_architecture": "Hybrid Architecture #2 (Unmanaged)",
+            "modifications": [
+              "Switch managed services to self-hosted",
+              "Fitness improved 82.0 -> 82.8"
+            ],
+            "reasoning": "Targeted weak cost objective. Fitness 82.0 -> 82.8. Weaknesses: low cost (48.0).",
+            "source_weaknesses": [
+              "low cost (48.0)"
+            ],
+            "experience_used": [
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: "
+            ]
+          },
+          {
+            "name": "Serverless (Consolidated)",
+            "generation": 1,
+            "fitness": 81.8,
+            "objective_scores": {
+              "cost": 55,
+              "security": 87,
+              "reliability": 100,
+              "performance": 67,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Database",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Cache",
+                "type": "cache",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Event Queue",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "sync",
+            "deployment_strategy": "serverless",
+            "source_architecture": "Serverless (Consolidated)",
+            "modifications": [
+              "Consolidate services to reduce cost",
+              "Fitness improved 81.8 -> 81.8"
+            ],
+            "reasoning": "Targeted weak cost objective. Fitness 81.8 -> 81.8. Weaknesses: low cost (55.0), low performance (67.0).",
+            "source_weaknesses": [
+              "low cost (55.0)",
+              "low performance (67.0)"
+            ],
+            "experience_used": [
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: "
+            ]
+          },
+          {
+            "name": "Serverless (Unmanaged)",
+            "generation": 1,
+            "fitness": 83.0,
+            "objective_scores": {
+              "cost": 61,
+              "security": 87,
+              "reliability": 100,
+              "performance": 67,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Managed Database",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Cache",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Event Queue",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "sync",
+            "deployment_strategy": "serverless",
+            "source_architecture": "Serverless (Unmanaged)",
+            "modifications": [
+              "Switch managed services to self-hosted",
+              "Fitness improved 81.8 -> 83.0"
+            ],
+            "reasoning": "Targeted weak cost objective. Fitness 81.8 -> 83.0. Weaknesses: low cost (55.0), low performance (67.0).",
+            "source_weaknesses": [
+              "low cost (55.0)",
+              "low performance (67.0)"
+            ],
+            "experience_used": [
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: "
+            ]
+          }
+        ]
+      },
+      {
+        "generation": 2,
+        "population_size": 6,
+        "best_fitness": 83.4,
+        "best_architecture": "Hybrid Architecture #2 (Unmanaged) (Consolidated)",
+        "population": [
+          {
+            "name": "Serverless (Unmanaged)",
+            "generation": 2,
+            "fitness": 83.0,
+            "objective_scores": {
+              "cost": 61,
+              "security": 87,
+              "reliability": 100,
+              "performance": 67,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Managed Database",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Cache",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Event Queue",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "sync",
+            "deployment_strategy": "serverless"
+          },
+          {
+            "name": "Hybrid Architecture #2 (Unmanaged)",
+            "generation": 2,
+            "fitness": 82.8,
+            "objective_scores": {
+              "cost": 52,
+              "security": 87,
+              "reliability": 100,
+              "performance": 75,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Product Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Order Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Cart Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "RabbitMQ",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "async",
+            "deployment_strategy": "containerized"
+          },
+          {
+            "name": "Serverless (Unmanaged) (Consolidated)",
+            "generation": 2,
+            "fitness": 83.0,
+            "objective_scores": {
+              "cost": 61,
+              "security": 87,
+              "reliability": 100,
+              "performance": 67,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Managed Database",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Cache",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Event Queue",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "sync",
+            "deployment_strategy": "serverless"
+          },
+          {
+            "name": "Serverless (Unmanaged) (Unmanaged)",
+            "generation": 2,
+            "fitness": 83.0,
+            "objective_scores": {
+              "cost": 61,
+              "security": 87,
+              "reliability": 100,
+              "performance": 67,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Managed Database",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Cache",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Event Queue",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "sync",
+            "deployment_strategy": "serverless"
+          },
+          {
+            "name": "Hybrid Architecture #2 (Unmanaged) (Consolidated)",
+            "generation": 2,
+            "fitness": 83.4,
+            "objective_scores": {
+              "cost": 55,
+              "security": 87,
+              "reliability": 100,
+              "performance": 75,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Product Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Order Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "RabbitMQ",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "async",
+            "deployment_strategy": "containerized"
+          },
+          {
+            "name": "Hybrid Architecture #2 (Unmanaged) (Unmanaged)",
+            "generation": 2,
+            "fitness": 82.8,
+            "objective_scores": {
+              "cost": 52,
+              "security": 87,
+              "reliability": 100,
+              "performance": 75,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Product Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Order Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Cart Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "RabbitMQ",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "async",
+            "deployment_strategy": "containerized"
+          }
+        ],
+        "selected": [
+          {
+            "name": "Serverless (Unmanaged)",
+            "generation": 1,
+            "fitness": 83.0,
+            "objective_scores": {
+              "cost": 61,
+              "security": 87,
+              "reliability": 100,
+              "performance": 67,
+              "scalability": 100
+            },
+            "selected": true,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Managed Database",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Cache",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Event Queue",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "sync",
+            "deployment_strategy": "serverless"
+          },
+          {
+            "name": "Hybrid Architecture #2 (Unmanaged)",
+            "generation": 1,
+            "fitness": 82.8,
+            "objective_scores": {
+              "cost": 52,
+              "security": 87,
+              "reliability": 100,
+              "performance": 75,
+              "scalability": 100
+            },
+            "selected": true,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Product Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Order Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Cart Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "RabbitMQ",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "async",
+            "deployment_strategy": "containerized"
+          }
+        ],
+        "offspring": [
+          {
+            "name": "Serverless (Unmanaged) (Consolidated)",
+            "generation": 2,
+            "fitness": 83.0,
+            "objective_scores": {
+              "cost": 61,
+              "security": 87,
+              "reliability": 100,
+              "performance": 67,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Managed Database",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Cache",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Event Queue",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "sync",
+            "deployment_strategy": "serverless",
+            "source_architecture": "Serverless (Unmanaged) (Consolidated)",
+            "modifications": [
+              "Consolidate services to reduce cost",
+              "Fitness improved 83.0 -> 83.0"
+            ],
+            "reasoning": "Targeted weak cost objective. Fitness 83.0 -> 83.0. Weaknesses: low cost (61.0), low performance (67.0).",
+            "source_weaknesses": [
+              "low cost (61.0)",
+              "low performance (67.0)"
+            ],
+            "experience_used": [
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: "
+            ]
+          },
+          {
+            "name": "Serverless (Unmanaged) (Unmanaged)",
+            "generation": 2,
+            "fitness": 83.0,
+            "objective_scores": {
+              "cost": 61,
+              "security": 87,
+              "reliability": 100,
+              "performance": 67,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Managed Database",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Managed Cache",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Event Queue",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "sync",
+            "deployment_strategy": "serverless",
+            "source_architecture": "Serverless (Unmanaged) (Unmanaged)",
+            "modifications": [
+              "Switch managed services to self-hosted",
+              "Fitness improved 83.0 -> 83.0"
+            ],
+            "reasoning": "Targeted weak cost objective. Fitness 83.0 -> 83.0. Weaknesses: low cost (61.0), low performance (67.0).",
+            "source_weaknesses": [
+              "low cost (61.0)",
+              "low performance (67.0)"
+            ],
+            "experience_used": [
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: "
+            ]
+          },
+          {
+            "name": "Hybrid Architecture #2 (Unmanaged) (Consolidated)",
+            "generation": 2,
+            "fitness": 83.4,
+            "objective_scores": {
+              "cost": 55,
+              "security": 87,
+              "reliability": 100,
+              "performance": 75,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Product Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Order Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "RabbitMQ",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "async",
+            "deployment_strategy": "containerized",
+            "source_architecture": "Hybrid Architecture #2 (Unmanaged) (Consolidated)",
+            "modifications": [
+              "Consolidate services to reduce cost",
+              "Fitness improved 82.8 -> 83.4"
+            ],
+            "reasoning": "Targeted weak cost objective. Fitness 82.8 -> 83.4. Weaknesses: low cost (52.0).",
+            "source_weaknesses": [
+              "low cost (52.0)"
+            ],
+            "experience_used": [
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: "
+            ]
+          },
+          {
+            "name": "Hybrid Architecture #2 (Unmanaged) (Unmanaged)",
+            "generation": 2,
+            "fitness": 82.8,
+            "objective_scores": {
+              "cost": 52,
+              "security": 87,
+              "reliability": 100,
+              "performance": 75,
+              "scalability": 100
+            },
+            "selected": false,
+            "components": [
+              {
+                "name": "API Gateway",
+                "type": "gateway",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Product Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Order Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Cart Service",
+                "type": "service",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "Function Compute",
+                "type": "compute",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "PostgreSQL",
+                "type": "database",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Redis",
+                "type": "cache",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "RabbitMQ",
+                "type": "messaging",
+                "quantity": 1,
+                "managed": false
+              },
+              {
+                "name": "WAF Firewall",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              },
+              {
+                "name": "Secrets Vault",
+                "type": "security",
+                "quantity": 1,
+                "managed": true
+              }
+            ],
+            "services": [
+              "product",
+              "order",
+              "cart",
+              "payment",
+              "user",
+              "inventory"
+            ],
+            "communication_pattern": "async",
+            "deployment_strategy": "containerized",
+            "source_architecture": "Hybrid Architecture #2 (Unmanaged) (Unmanaged)",
+            "modifications": [
+              "Switch managed services to self-hosted",
+              "Fitness improved 82.8 -> 82.8"
+            ],
+            "reasoning": "Targeted weak cost objective. Fitness 82.8 -> 82.8. Weaknesses: low cost (52.0).",
+            "source_weaknesses": [
+              "low cost (52.0)"
+            ],
+            "experience_used": [
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: ",
+              "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: "
+            ]
+          }
+        ]
+      }
+    ],
+    "evolution_history": {
+      "generations_run": 2,
+      "evaluation_history": [
+        81.8,
+        82.0,
+        80.2,
+        78.6,
+        81.2,
+        83.0,
+        83.4
+      ],
+      "population_size": 5,
+      "selection_count": 2,
+      "mutation_count": 2,
+      "candidates_evaluated": 13,
+      "fitness_progression": [
+        82.0,
+        83.0,
+        83.4
+      ]
+    },
+    "experience_memory_entries": 181,
+    "experience_used": [
+      "Microservices #3 (Consolidated) (Consolidated) achieved fitness 89.0; weaknesses: none; improvements: "
+    ]
+  }
+}

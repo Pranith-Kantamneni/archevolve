@@ -3,363 +3,267 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>ARCHEVOLVE — Results</title>
-<style>
-  :root {
-    --bg: #0d1117;
-    --panel: #161b22;
-    --panel2: #1c2333;
-    --border: #2d333b;
-    --text: #e6edf3;
-    --muted: #8b949e;
-    --accent: #58a6ff;
-    --green: #3fb950;
-    --red: #f85149;
-    --yellow: #d29922;
-    --purple: #bc8cff;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background: var(--bg);
-    color: var(--text);
-    line-height: 1.55;
-  }
-  .container { max-width: 1100px; margin: 0 auto; padding: 24px 20px 60px; }
-
-  header.top {
-    display: flex; align-items: center; gap: 16px;
-    padding: 18px 0; margin-bottom: 24px;
-    border-bottom: 1px solid var(--border);
-  }
-  header.top .logo {
-    width: 44px; height: 44px; border-radius: 10px;
-    background: linear-gradient(135deg, var(--accent), var(--purple));
-    display: flex; align-items: center; justify-content: center;
-    font-weight: 800; font-size: 18px; color: #fff; flex-shrink: 0;
-  }
-  header.top h1 { font-size: 22px; font-weight: 700; }
-  header.top p { color: var(--muted); font-size: 13px; }
-
-  .mono { font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace; }
-
-  .grid { display: grid; gap: 16px; }
-  .grid.cols2 { grid-template-columns: 1fr 1fr; }
-  .grid.cols4 { grid-template-columns: repeat(4, 1fr); }
-  @media (max-width: 800px) {
-    .grid.cols2, .grid.cols4 { grid-template-columns: 1fr; }
-  }
-
-  .panel {
-    background: var(--panel); border: 1px solid var(--border);
-    border-radius: 12px; padding: 18px 20px;
-  }
-  .panel h2 {
-    font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em;
-    color: var(--accent); margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
-  }
-  .panel h2 .step {
-    background: var(--accent); color: #0d1117; font-weight: 800;
-    width: 22px; height: 22px; border-radius: 6px; font-size: 12px;
-    display: inline-flex; align-items: center; justify-content: center;
-  }
-  .sub { color: var(--muted); font-size: 13px; }
-
-  .kpi {
-    text-align: center; padding: 14px 10px;
-    background: var(--panel2); border-radius: 10px; height: 100%;
-  }
-  .kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; }
-  .kpi .value { font-size: 26px; font-weight: 800; margin-top: 4px; }
-  .kpi .delta { font-size: 13px; margin-top: 2px; font-weight: 600; }
-  .kpi.up .value, .delta.up { color: var(--green); }
-  .kpi.down .value, .delta.down { color: var(--red); }
-  .kpi.accent .value { color: var(--accent); }
-
-  .bar-row { display: grid; grid-template-columns: 130px 1fr 60px; align-items: center; gap: 12px; margin: 10px 0; }
-  .bar-row .name { font-size: 13px; color: var(--muted); text-align: right; }
-  .bar-track { background: var(--panel2); border-radius: 6px; height: 14px; overflow: hidden; position: relative; }
-  .bar-fill { height: 100%; border-radius: 6px; transition: width 0.6s ease; }
-  .bar-fill.blue { background: linear-gradient(90deg, #1f6feb, var(--accent)); }
-  .bar-fill.base { background: linear-gradient(90deg, #3d444d, #585e66); }
-  .bar-fill.green { background: linear-gradient(90deg, #238636, var(--green)); }
-  .bar-fill.purple { background: linear-gradient(90deg, #6e40c9, var(--purple)); }
-  .bar-fill.orange { background: linear-gradient(90deg, #d29922, #f2bd5d); }
-  .bar-row .val { font-size: 13px; font-weight: 700; }
-
-  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--muted); margin-top: 8px; flex-wrap: wrap; }
-  .legend span { display: inline-flex; align-items: center; gap: 6px; }
-  .legend .dot { width: 10px; height: 10px; border-radius: 3px; display: inline-block; }
-
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); }
-  th { color: var(--muted); text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; }
-  tr:last-child td { border-bottom: none; }
-  .up { color: var(--green); }
-  .down { color: var(--red); }
-
-  .pill {
-    display: inline-block; padding: 2px 10px; border-radius: 20px;
-    font-size: 12px; font-weight: 600; background: var(--panel2);
-    border: 1px solid var(--border); color: var(--accent); margin: 2px 4px 2px 0;
-  }
-  .pill.green { color: var(--green); border-color: #1f6f34; }
-  .pill.purple { color: var(--purple); border-color: #553a8f; }
-  .pill.yellow { color: var(--yellow); border-color: #6b5a1e; }
-  .pill.orange { color: #f2bd5d; border-color: #6b4e1e; }
-  .pill.red { color: var(--red); border-color: #6b272e; }
-
-  .sparkline { display: flex; align-items: flex-end; gap: 4px; height: 80px; padding: 6px 0; }
-  .sparkline .bar { flex: 1; background: linear-gradient(180deg, var(--accent), #1f6feb); border-radius: 4px 4px 0 0; min-width: 18px; min-height: 6px; position: relative; }
-  .sparkline .bar .tl { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--muted); }
-
-  .status { display: inline-flex; align-items: center; gap: 8px; color: var(--muted); }
-  .status .spinner {
-    width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent);
-    border-radius: 50%; animation: spin 0.8s linear infinite;
-  }
-  @keyframes spin { to { transform: rotate(360deg); } }
-
-  .error { color: var(--red); padding: 12px; border: 1px solid var(--border); border-radius: 8px; background: #2d1517; }
-  .hidden { display: none; }
-
-  .comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 10px; }
-  .comp-card {
-    background: var(--panel2); border: 1px solid var(--border); border-radius: 10px;
-    padding: 10px 12px; font-size: 13px;
-  }
-  .comp-card .ct { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; }
-  .comp-card .cn { font-weight: 700; margin: 2px 0; word-break: break-word; }
-  .comp-card .cm { color: var(--green); font-size: 11px; }
-
-  .req-list { font-size: 13px; }
-  .req-list li { margin: 6px 0 6px 18px; }
-  .req-list li::marker { color: var(--accent); }
-
-  footer { margin-top: 40px; text-align: center; color: var(--muted); font-size: 12px; }
-</style>
+<title>ARCHEVOLVE — Design your system architecture</title>
+<link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-<div class="container">
-  <header class="top">
-    <div class="logo">A</div>
-    <div>
-      <h1>ARCHEVOLVE</h1>
-      <p>Agentic AI Framework for Automated Software System Design — Results Viewer</p>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div>ARCHEVOLVE<small>Automated Software System Design</small></div>
     </div>
-  </header>
-
-  <div id="loading" class="panel">
-    <div class="status"><span class="spinner"></span><span>Running the evolutionary pipeline...</span></div>
+    <nav class="nav">
+      <a href="/" class="active">Home</a>
+      <a href="/" id="nav-new">New Design</a>
+      <a href="#" id="nav-results">Results</a>
+    </nav>
   </div>
+</header>
 
-  <div id="error" class="hidden"></div>
+<main class="container narrow">
+  <section class="hero">
+    <span class="eyebrow">AlphaEvolve-inspired architecture search</span>
+    <h1>Design your system architecture with <span class="grad">AI</span></h1>
+    <p class="lead">
+      Provide your application type and requirements. ARCHEVOLVE generates, evaluates,
+      and evolves multiple architecture candidates to identify a high-quality design.
+    </p>
+  </section>
 
-  <div id="content" class="hidden">
-    <!-- 1. Overview KPIs -->
-    <div class="panel" style="margin-bottom:16px;">
-      <h2><span class="step">1</span> Result Overview</h2>
-      <div class="grid cols4">
-        <div class="kpi accent"><div class="label">Best Architecture</div><div class="value" id="k-best" style="font-size:16px;">—</div></div>
-        <div class="kpi"><div class="label">Baseline Fitness</div><div class="value" id="k-base">—</div><div class="delta">initial</div></div>
-        <div class="kpi up"><div class="label">Final Fitness</div><div class="value" id="k-final">—</div><div class="delta up" id="k-abs">—</div></div>
-        <div class="kpi accent"><div class="label">Improvement</div><div class="value" id="k-pct" style="color:var(--green);">—</div><div class="delta up" id="k-gens">— generations</div></div>
+  <div id="form-alert" class="alert error"></div>
+
+  <form id="design-form" class="card" autocomplete="off">
+    <div class="field">
+      <label for="app-type">Application / System Type <span class="req">*</span></label>
+      <div class="hint">e.g. E-commerce platform, Food delivery application, Banking system, Real-time chat application</div>
+      <input type="text" id="app-type" list="app-examples" placeholder="E-commerce platform">
+      <datalist id="app-examples">
+        <option value="E-commerce platform"></option>
+        <option value="Food delivery application"></option>
+        <option value="Banking system"></option>
+        <option value="Healthcare management system"></option>
+        <option value="Social media platform"></option>
+        <option value="Real-time chat application"></option>
+        <option value="Online learning platform"></option>
+        <option value="Ride-sharing application"></option>
+      </datalist>
+    </div>
+
+    <div class="field">
+      <label for="requirements">System Requirements <span class="req">*</span></label>
+      <div class="hint">Describe what your system needs to achieve — scale, latency, availability, security, cost.</div>
+      <textarea id="requirements" placeholder="Describe what your system needs to achieve..."></textarea>
+    </div>
+
+    <div class="field">
+      <label for="constraints">Additional Constraints <span class="muted2">(optional)</span></label>
+      <div class="hint">Budget, cloud provider, preferred technologies, deployment constraints, compliance, database preferences.</div>
+      <textarea id="constraints" style="min-height:88px" placeholder="e.g. Budget $5000/month, deploy on AWS, use PostgreSQL, comply with GDPR"></textarea>
+    </div>
+
+    <div class="field">
+      <label>Quick examples <span class="muted2">(fill the form — not fixed architectures)</span></label>
+      <div class="chips" id="preset-chips">
+        <span class="chip" data-preset="ecommerce">E-commerce</span>
+        <span class="chip" data-preset="realtime">Real-time system</span>
+        <span class="chip" data-preset="scalable">High scalability</span>
+        <span class="chip" data-preset="banking">Secure banking</span>
+        <span class="chip" data-preset="ai">AI application</span>
       </div>
     </div>
 
-    <!-- 2. Requirement -->
-    <div class="grid cols2" style="margin-bottom:16px;">
-      <div class="panel">
-        <h2><span class="step">2</span> Requirement</h2>
-        <p id="requirement" class="sub">—</p>
-      </div>
-      <div class="panel">
-        <h2><span class="step">3</span> Parsed Requirements</h2>
-        <div id="parsed"></div>
-      </div>
+    <div class="form-actions">
+      <button type="submit" class="btn btn-primary btn-lg" id="generate-btn">
+        Generate Architecture
+      </button>
+      <span class="note">Runs the ARCHEVOLVE pipeline in deterministic mode — no external API key required.</span>
     </div>
+  </form>
 
-    <!-- 4. Scores comparison -->
-    <div class="panel" style="margin-bottom:16px;">
-      <h2><span class="step">4</span> Objective Scores — Baseline vs. ARCHEVOLVE</h2>
-      <div id="bars"></div>
-      <div class="legend">
-        <span><span class="dot" style="background:linear-gradient(90deg,#3d444d,#585e66);"></span>Baseline (initial)</span>
-        <span><span class="dot" style="background:linear-gradient(90deg,#1f6feb,var(--accent));"></span>ARCHEVOLVE (final)</span>
-      </div>
-    </div>
+  <p class="center muted2 mt24" style="font-size:12.5px;">
+    Generated architectures, scores and evolution history are computed by the ARCHEVOLVE backend.
+  </p>
+</main>
 
-    <!-- 5. Per-objective table -->
-    <div class="panel" style="margin-bottom:16px;">
-      <h2><span class="step">5</span> Improvement Breakdown</h2>
-      <table>
-        <thead><tr><th>Objective</th><th>Baseline</th><th>Final</th><th>Δ Absolute</th><th>Δ %</th></tr></thead>
-        <tbody id="improve-table"></tbody>
-      </table>
-    </div>
+<footer class="site">ARCHEVOLVE — Agentic AI Framework for Automated Software System Design</footer>
 
-    <!-- 6. Final architecture -->
-    <div class="grid cols2" style="margin-bottom:16px;">
-      <div class="panel">
-        <h2><span class="step">6</span> Final Architecture</h2>
-        <div style="margin-bottom:10px;"><span class="pill" id="arch-name" style="font-size:14px;padding:4px 14px;">—</span></div>
-        <div id="components" class="comp-grid"></div>
-      </div>
-      <!-- 7. Evolution history -->
-      <div class="panel">
-        <h2><span class="step">7</span> Fitness Progression</h2>
-        <p class="sub" style="margin-bottom:8px;">Generations: <b style="color:var(--text);" id="hist-gens">—</b> &nbsp;·&nbsp; Candidates evaluated: <b style="color:var(--text);" id="hist-cands">—</b></p>
-        <div id="spark" class="sparkline"></div>
-      </div>
-    </div>
-
-    <!-- 8. Initial population -->
-    <div class="panel">
-      <h2><span class="step">8</span> Initial Population</h2>
-      <div id="init-pop" class="comp-grid"></div>
+<!-- Processing overlay -->
+<div class="overlay hidden" id="overlay">
+  <div class="loader-card">
+    <h2>ARCHEVOLVE is designing your system…</h2>
+    <p class="sub" id="overlay-sub">Running requirement analysis and evolutionary search.</p>
+    <ul class="steps" id="steps"></ul>
+    <div class="progress-track"><div class="progress-fill" id="progress"></div></div>
+    <div class="progress-meta">
+      <span id="stage-label">Starting…</span>
+      <span id="gen-label"></span>
     </div>
   </div>
-
-  <footer>ARCHEVOLVE demonstrator — deterministic mode (no API keys required)</footer>
 </div>
 
 <script>
-  const OBJS = ["cost", "security", "reliability", "performance", "scalability"];
-  const OBJ_LABEL = { cost: "Cost", security: "Security", reliability: "Reliability", performance: "Performance", scalability: "Scalability" };
+  const PRESETS = {
+    ecommerce: {
+      type: "E-commerce platform",
+      req: "Build an e-commerce platform that supports 10,000 concurrent users, requires high availability, secure payment processing, low latency, and should scale during traffic spikes while keeping infrastructure cost reasonable.",
+      con: "Budget $5000/month, use PostgreSQL, deploy on AWS"
+    },
+    realtime: {
+      type: "Real-time chat application",
+      req: "Design a real-time chat application for 50,000 concurrent users with low-latency messaging, presence and typing indicators, delivery receipts, and high availability.",
+      con: "Use Redis, WebSocket support, deploy on AWS"
+    },
+    scalable: {
+      type: "Social media platform",
+      req: "Build a social media platform supporting 1,000,000 users with high scalability for viral traffic spikes, low latency feeds, media uploads, and high availability.",
+      con: "Prefer horizontal scaling, use Cassandra, keep cost reasonable"
+    },
+    banking: {
+      type: "Online banking system",
+      req: "Build an online banking system with strong security, transaction consistency, audit logging and PCI-DSS compliance for 1,000,000 users with high availability.",
+      con: "Compliance: PCI-DSS; on-premise deployment; PostgreSQL"
+    },
+    ai: {
+      type: "AI application",
+      req: "Build an AI application that serves model inference to 20,000 concurrent users with low latency, GPU-backed compute, high availability and usage-based scaling.",
+      con: "Deploy on AWS, use Kubernetes, budget $8000/month"
+    }
+  };
 
-  function esc(s) {
-    return String(s == null ? "" : s).replace(/[&<>"']/g, c => ({
-      "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"
-    }[c]));
-  }
+  const STAGES = [
+    "Requirements analyzed",
+    "Candidate architectures generated",
+    "Multi-objective evaluation completed",
+    "Fitness calculated",
+    "Selecting strongest candidates",
+    "Evolving architecture",
+    "Checking experience memory",
+    "Finalizing optimized architecture"
+  ];
 
-  function err(msg) {
-    document.getElementById("loading").classList.add("hidden");
-    document.getElementById("error").classList.remove("hidden");
-    document.getElementById("error").innerHTML = "<div class='error'>⚠ " + esc(msg) + "</div>";
-  }
+  document.querySelectorAll("[data-preset]").forEach(chip => {
+    chip.addEventListener("click", () => {
+      const p = PRESETS[chip.dataset.preset];
+      if (!p) return;
+      document.getElementById("app-type").value = p.type;
+      document.getElementById("requirements").value = p.req;
+      document.getElementById("constraints").value = p.con;
+      document.querySelectorAll("[data-preset]").forEach(c => c.classList.remove("selected"));
+      chip.classList.add("selected");
+    });
+  });
 
-  async function load() {
+  document.getElementById("nav-results").addEventListener("click", async (e) => {
+    e.preventDefault();
     try {
-      const r = await fetch("/run-demo");
-      if (!r.ok) throw new Error("Server returned " + r.status);
-      const d = await r.json();
-      render(d);
-    } catch (e) {
-      err("Failed to load results: " + e.message + ". Is the server running with uvicorn archevolve.api:app on port 8000?");
-    }
+      const r = await fetch("/api/runs?limit=1");
+      const runs = await r.json();
+      if (runs && runs.length) window.location.href = "/results/" + runs[0].run_id;
+      else window.location.href = "/";
+    } catch (_) { window.location.href = "/"; }
+  });
+
+  const form = document.getElementById("design-form");
+  const alertBox = document.getElementById("form-alert");
+  const overlay = document.getElementById("overlay");
+
+  function showError(msg) {
+    alertBox.textContent = msg;
+    alertBox.classList.add("show");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  function clearError() { alertBox.classList.remove("show"); }
+
+  function buildSteps() {
+    const ul = document.getElementById("steps");
+    ul.innerHTML = STAGES.map(() =>
+      '<li><span class="ind"></span><span class="txt"></span></li>'
+    ).join("");
+    ul.querySelectorAll(".txt").forEach((el, i) => el.textContent = STAGES[i]);
   }
 
-  function render(d) {
-    const base = d.baseline || {};
-    const fin = d.final_scores || {};
-    const imp = d.improvement || {};
-    const arch = d.final_architecture || {};
-    const hist = (d.evolution_history || {});
-    const gens = hist.generations_run || 0;
-    const cands = 5 + gens * 2;
+  let stageTimer = null;
+  function startStages() {
+    const items = document.querySelectorAll("#steps li");
+    let idx = 0;
+    const progress = document.getElementById("progress");
+    const label = document.getElementById("stage-label");
+    items.forEach(li => li.className = "");
+    progress.style.width = "0%";
 
-    document.getElementById("loading").classList.add("hidden");
-    document.getElementById("content").classList.remove("hidden");
-
-    // 1. KPIs
-    document.getElementById("k-best").textContent = arch.name || "—";
-    document.getElementById("k-base").textContent = (base.overall || 0).toFixed(1);
-    document.getElementById("k-final").textContent = (fin.overall || 0).toFixed(1);
-    const abs = (fin.overall || 0) - (base.overall || 0);
-    document.getElementById("k-abs").textContent = (abs >= 0 ? "+" : "") + abs.toFixed(1);
-    const pct = (abs / Math.max(base.overall || 0, 1e-10)) * 100;
-    document.getElementById("k-pct").textContent = (pct >= 0 ? "+" : "") + pct.toFixed(1) + "%";
-    document.getElementById("k-gens").textContent = gens + " generations";
-
-    // 2. Requirement
-    document.getElementById("requirement").textContent = d.raw_requirement || "—";
-
-    // 3. Parsed requirements
-    const pr = d.parsed_requirements || {};
-    const parsedItems = [
-      ["Expected users", pr.expected_users, "users"],
-      ["Security level", pr.security_level, null],
-      ["Cost sensitive", pr.cost_sensitive, null],
-      ["Scalability", pr.scalability_type, null],
-      ["Availability", pr.availability_percentage ? pr.availability_percentage + "%" : null, null],
-      ["Max latency", pr.max_latency_ms ? pr.max_latency_ms + " ms" : null, null],
-      ["Encryption", pr.data_encryption_required, null],
-      ["Authentication", pr.authentication_required, null],
-      ["Deployment", pr.deployment_environment, null],
-    ].filter(x => x[1] != null && x[1] !== "");
-    const nfeats = (pr.non_functional || []).map(x => "<li>" + esc(x) + "</li>").join("");
-    const feats = (pr.functional || []).map(x => "<li>" + esc(x) + "</li>").join("");
-    document.getElementById("parsed").innerHTML =
-      "<ul class='req-list'>" +
-      parsedItems.map(([k, v]) => "<li><b>" + esc(k) + ":</b> " + esc(v) + "</li>").join("") +
-      feats + nfeats + "</ul>";
-
-    // 4. Bars (Baseline vs final)
-    let barsHtml = "";
-    for (const obj of OBJS) {
-      const b = base[obj] || 0;
-      const f = fin[obj] || 0;
-      barsHtml +=
-        "<div class='bar-row'>" +
-        "<div class='name'>" + OBJ_LABEL[obj] + "</div>" +
-        "<div class='bar-track'>" +
-        "<div class='bar-fill base' style='width:" + b + "%;position:absolute;'></div>" +
-        "<div class='bar-fill blue' style='width:" + f + "%;'></div>" +
-        "</div><div class='val'>" + f.toFixed(1) + "</div></div>";
-    }
-    document.getElementById("bars").innerHTML = barsHtml;
-
-    // 5. Improvement table
-    let rows = "";
-    for (const obj of OBJS) {
-      if (!imp[obj]) continue;
-      const i = imp[obj];
-      const uc = i.absolute > 0 ? "up" : (i.absolute < 0 ? "down" : "");
-      const arrow = i.absolute > 0 ? "▲" : (i.absolute < 0 ? "▼" : "•");
-      rows += "<tr><td>" + OBJ_LABEL[obj] + "</td>" +
-        "<td>" + i.initial.toFixed(1) + "</td>" +
-        "<td>" + i.final.toFixed(1) + "</td>" +
-        "<td class='" + uc + "'>" + arrow + " " + (i.absolute >= 0 ? "+" : "") + i.absolute.toFixed(1) + "</td>" +
-        "<td class='" + uc + "'>" + (i.percentage >= 0 ? "+" : "") + i.percentage.toFixed(1) + "%</td></tr>";
-    }
-    const overallAbs = (fin.overall || 0) - (base.overall || 0);
-    const overallPct = overallAbs / Math.max(base.overall || 0, 1e-10) * 100;
-    rows += "<tr><td><b>Overall</b></td><td>" + (base.overall || 0).toFixed(1) + "</td><td>" +
-      (fin.overall || 0).toFixed(1) + "</td><td class='up'>▲ +" + overallAbs.toFixed(1) +
-      "</td><td class='up'>+" + overallPct.toFixed(1) + "%</td></tr>";
-    document.getElementById("improve-table").innerHTML = rows;
-
-    // 6. Final architecture components
-    document.getElementById("arch-name").textContent = arch.name || "—";
-    const comps = (arch.components || []).map(c => {
-      const cls = c.type === "database" ? "green" : c.type === "cache" ? "yellow" :
-        c.type === "gateway" ? "purple" : c.type === "service" ? "orange" : "";
-      return "<div class='comp-card'><div class='ct'>" + esc(c.type) + "</div>" +
-        "<div class='cn'>" + esc(c.name) + "</div>" +
-        "<div class='cm'>" + (c.managed ? "managed" : "self-hosted") + "</div></div>";
-    }).join("");
-    document.getElementById("components").innerHTML = comps;
-
-    // 7. Sparkline of fitness progression
-    document.getElementById("hist-gens").textContent = gens;
-    document.getElementById("hist-cands").textContent = cands;
-    const ev = hist.evaluation_history || [];
-    const maxv = Math.max.apply(null, ev.concat([1]));
-    document.getElementById("spark").innerHTML = ev.map((f, i) => {
-      const h = Math.max(8, (f / maxv) * 72);
-      return "<div class='bar' style='height:" + h + "px;'><span class='tl'>G" + i + "</span></div>";
-    }).join("");
-
-    // 8. Initial population
-    const pop = d.initial_population || [];
-    document.getElementById("init-pop").innerHTML = pop.map(p => {
-      const cc = (p.components || []).slice(0, 5).map(c => "<span class='pill'>" + esc(c.name) + "</span>").join("");
-      return "<div class='comp-card'><div class='ct'>candidate</div><div class='cn'>" + esc(p.name) + "</div><div style='margin-top:6px;'>" + cc + "</div></div>";
-    }).join("") || "<p class='sub'>No population data</p>";
+    const tick = () => {
+      if (idx > 0) items[idx - 1].className = "done";
+      if (idx < items.length) {
+        items[idx].className = "active";
+        label.textContent = STAGES[idx];
+        progress.style.width = Math.round(((idx + 1) / items.length) * 90) + "%";
+        idx++;
+        stageTimer = setTimeout(tick, 320);
+      }
+    };
+    tick();
   }
 
-  load();
+  async function finishStages(meta) {
+    if (stageTimer) { clearTimeout(stageTimer); stageTimer = null; }
+    const items = document.querySelectorAll("#steps li");
+    items.forEach(li => li.className = "done");
+    document.getElementById("progress").style.width = "100%";
+    document.getElementById("stage-label").textContent = "Complete";
+    if (meta) document.getElementById("gen-label").textContent = meta;
+  }
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearError();
+
+    const appType = document.getElementById("app-type").value.trim();
+    const requirements = document.getElementById("requirements").value.trim();
+    const constraints = document.getElementById("constraints").value.trim();
+
+    if (!appType) return showError("Please enter an Application / System Type.");
+    if (!requirements) return showError("Please describe the System Requirements.");
+    if (requirements.length < 10) return showError("Please provide a more detailed description of the System Requirements.");
+
+    overlay.classList.remove("hidden");
+    document.getElementById("gen-label").textContent = "";
+    buildSteps();
+    startStages();
+
+    try {
+      const resp = await fetch("/optimize", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          application_type: appType,
+          requirements: requirements,
+          constraints: constraints
+        })
+      });
+
+      if (!resp.ok) {
+        let detail = "Optimization failed.";
+        try { const j = await resp.json(); detail = j.detail || detail; } catch (_) {}
+        overlay.classList.add("hidden");
+        if (stageTimer) clearTimeout(stageTimer);
+        return showError(detail);
+      }
+
+      const result = await resp.json();
+      const hist = result.evolution_history || {};
+      const gens = (hist.generations_run || 0);
+      const cands = (hist.candidates_evaluated || 0);
+      await finishStages(gens + " generation" + (gens === 1 ? "" : "s") + " · " + cands + " candidates evaluated");
+      setTimeout(() => {
+        window.location.href = "/results/" + result.run_id;
+      }, 650);
+    } catch (err) {
+      overlay.classList.add("hidden");
+      if (stageTimer) clearTimeout(stageTimer);
+      showError("Could not reach the ARCHEVOLVE backend. Is the server running? (" + err.message + ")");
+    }
+  });
 </script>
 </body>
 </html>
