@@ -4,6 +4,7 @@ from typing import List, Dict, Any, Optional
 from dataclasses import dataclass, field
 
 from ..evaluation import FitnessResult, evaluate_architecture
+from ..evaluation.scoring import CORE_DIMENSIONS, ScoringContext, grade_for, resolve_weights
 
 
 @dataclass
@@ -30,19 +31,28 @@ class Candidate:
     mutation_source: str = ""  # which architecture this came from
     evaluator_results: Dict[str, Any] = field(default_factory=dict)
 
-    def compute_fitness(self) -> None:
-        """Calculate overall fitness from objective scores using default equal weights."""
-        self.overall_fitness = (
-            0.20 * self.cost
-            + 0.20 * self.security
-            + 0.20 * self.reliability
-            + 0.20 * self.performance
-            + 0.20 * self.scalability
-        )
+    # Production-grade scoring transparency (populated by FitnessEngine)
+    breakdowns: Dict[str, Dict[str, float]] = field(default_factory=dict)
+    grades: Dict[str, str] = field(default_factory=dict)
+    weights_used: Dict[str, float] = field(default_factory=dict)
+    weight_profile: str = "default"
+    # Domain-specific parameter scores {name: score} + transparency
+    extra_scores: Dict[str, float] = field(default_factory=dict)
+    extra_grades: Dict[str, str] = field(default_factory=dict)
+    extra_breakdowns: Dict[str, Dict[str, float]] = field(default_factory=dict)
+
+    def compute_fitness(self, weights: Optional[Dict[str, float]] = None) -> None:
+        """Calculate overall fitness from objective scores using given (or equal) weights."""
+        w = weights or {d: 0.20 for d in CORE_DIMENSIONS}
+        self.overall_fitness = sum(w.get(d, 0.0) * getattr(self, d, 0.0) for d in CORE_DIMENSIONS)
+
+    @property
+    def overall_grade(self) -> str:
+        return grade_for(self.overall_fitness)
 
     def __str__(self) -> str:
         return (
-            f"Candidate [gen-{self.generation}] fitness={self.overall_fitness:.1f}\n"
+            f"Candidate [gen-{self.generation}] fitness={self.overall_fitness:.1f} ({self.overall_grade})\n"
             f"  Cost: {self.cost:.1f} ({self.cost_reasoning})\n"
             f"  Security: {self.security:.1f} ({self.security_reasoning})\n"
             f"  Reliability: {self.reliability:.1f} ({self.reliability_reasoning})\n"
@@ -52,9 +62,15 @@ class Candidate:
 
 
 class FitnessEngine:
-    """Multi-objective fitness calculation engine."""
+    """Multi-objective fitness calculation engine.
 
-    # Default weights
+    Weights are application-aware: when ``weights`` is None they are resolved
+    per run from the application domain + requirements (see
+    ``evaluation.scoring.resolve_weights``) instead of always using equal
+    0.20 weights.
+    """
+
+    # Default weights (used only when no context is available)
     DEFAULT_WEIGHTS = {
         "cost": 0.20,
         "security": 0.20,
@@ -71,32 +87,55 @@ class FitnessEngine:
 
         Args:
             weights: Dict mapping objective names to weights.
-                     Must sum to 1.0. If None, uses defaults.
+                      Must sum to 1.0. If None, weights are resolved per
+                      evaluation from the scoring context (application-aware).
         """
         if weights is not None:
             total = sum(weights.values())
             if abs(total - 1.0) > 0.001:
                 raise ValueError(f"Fitness weights must sum to 1.0, got {total}")
-            self.weights = weights
+            self.weights: Optional[Dict[str, float]] = dict(weights)
+            self._auto_weights = False
         else:
-            self.weights = self.DEFAULT_WEIGHTS
+            self.weights = None  # auto-resolve per evaluation
+            self._auto_weights = True
+
+    def _resolve(
+        self,
+        context: Any = None,
+        application_type: str = "",
+    ) -> Dict[str, Any]:
+        if self.weights is not None:
+            total = sum(self.weights.values())
+            norm = {k: float(v) / total for k, v in self.weights.items()}
+            for dim in CORE_DIMENSIONS:
+                norm.setdefault(dim, 0.0)
+            return {"weights": norm, "profile": "custom", "source": "custom"}
+        ctx = context if isinstance(context, ScoringContext) else ScoringContext.from_any(context, application_type)
+        return resolve_weights(ctx.application_type or application_type, ctx)
 
     def evaluate_and_score(
-        self, architecture: object, generation: int = 0
+        self, architecture: object, generation: int = 0,
+        context: Any = None, application_type: str = "",
     ) -> Candidate:
         """Evaluate an architecture and compute fitness scores.
 
         Args:
             architecture: Architecture model instance or dict
             generation: Current generation number
+            context: ParsedRequirement / StructuredRequirements / dict used to
+                condition scoring thresholds and resolve weights.
+            application_type: Application domain (used for weight profiles).
 
         Returns:
             Candidate with all scores populated
         """
-        # Run the evaluation
-        fitness_result = evaluate_architecture(architecture)
+        resolved = self._resolve(context, application_type)
+        w = resolved["weights"]
+        fitness_result = evaluate_architecture(
+            architecture, context=context, weights=w, application_type=application_type,
+        )
 
-        # Create candidate with scores from evaluation
         candidate = Candidate(
             architecture=architecture,
             cost=fitness_result.cost,
@@ -111,20 +150,14 @@ class FitnessEngine:
             reliability_reasoning=fitness_result.reliability_reasoning,
             performance_reasoning=fitness_result.performance_reasoning,
             scalability_reasoning=fitness_result.scalability_reasoning,
+            breakdowns=dict(fitness_result.breakdowns),
+            grades=dict(fitness_result.grades),
+            weights_used=dict(fitness_result.weights),
+            weight_profile=fitness_result.weight_profile,
+            extra_scores={k: float(v["score"]) for k, v in fitness_result.domain_params.items()},
+            extra_grades={k: v["grade"] for k, v in fitness_result.domain_params.items()},
+            extra_breakdowns={k: dict(v["breakdown"]) for k, v in fitness_result.domain_params.items()},
         )
-
-        # Compute fitness using configured weights
-        if self.weights is not None:
-            candidate.overall_fitness = (
-                self.weights.get("cost", 0.20) * candidate.cost
-                + self.weights.get("security", 0.20) * candidate.security
-                + self.weights.get("reliability", 0.20) * candidate.reliability
-                + self.weights.get("performance", 0.20) * candidate.performance
-                + self.weights.get("scalability", 0.20) * candidate.scalability
-            )
-        else:
-            candidate.compute_fitness()
-
         return candidate
 
     def rank_candidates(
@@ -169,4 +202,5 @@ class FitnessEngine:
         total = sum(weights.values())
         if abs(total - 1.0) > 0.001:
             raise ValueError(f"Fitness weights must sum to 1.0, got {total}")
-        self.weights = weights
+        self.weights = dict(weights)
+        self._auto_weights = False

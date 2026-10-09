@@ -38,6 +38,10 @@ class OptimizeRequest(BaseModel):
         default="",
         description="Optional additional constraints (budget, provider, compliance, ...)",
     )
+    weights: Optional[Dict[str, float]] = Field(
+        default=None,
+        description="Optional custom scoring weights, e.g. {'cost': 0.3, ...}. Auto-resolved per application when omitted.",
+    )
 
 
 class RunSummary(BaseModel):
@@ -80,7 +84,7 @@ async def optimize(req: OptimizeRequest) -> Dict[str, Any]:
         )
 
     try:
-        return run_optimization(app_type, requirements, req.constraints)
+        return run_optimization(app_type, requirements, req.constraints, weights=req.weights)
     except Exception as e:  # pragma: no cover - defensive
         raise HTTPException(status_code=500, detail=f"Optimization failed: {e}")
 

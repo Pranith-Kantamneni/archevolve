@@ -1,12 +1,14 @@
 from __future__ import annotations
 
-from typing import Tuple, Dict, Any
+from typing import Any, Dict, Optional
 
-from .cost_evaluator import CostEvaluator, EvaluatorResult as CostResult
-from .security_evaluator import SecurityEvaluator, EvaluatorResult as SecurityResult
-from .reliability_evaluator import ReliabilityEvaluator, EvaluatorResult as ReliabilityResult
-from .performance_evaluator import PerformanceEvaluator, EvaluatorResult as PerformanceResult
-from .scalability_evaluator import ScalabilityEvaluator, EvaluatorResult as ScalabilityResult
+from .cost_evaluator import CostEvaluator
+from .security_evaluator import SecurityEvaluator
+from .reliability_evaluator import ReliabilityEvaluator
+from .performance_evaluator import PerformanceEvaluator
+from .scalability_evaluator import ScalabilityEvaluator
+from .domain_params import PARAM_DEFS, blend_overall, blended_weights, evaluate_domain_params
+from .scoring import CORE_DIMENSIONS, ScoringContext, grade_for, resolve_weights
 
 
 class FitnessResult:
@@ -26,6 +28,11 @@ class FitnessResult:
         performance_reasoning: str = "",
         scalability_reasoning: str = "",
         evaluator_results: Dict[str, Any] | None = None,
+        breakdowns: Dict[str, Dict[str, float]] | None = None,
+        grades: Dict[str, str] | None = None,
+        weights: Dict[str, float] | None = None,
+        weight_profile: str = "default",
+        domain_params: Dict[str, Dict[str, Any]] | None = None,
     ):
         self.cost = cost
         self.security = security
@@ -41,15 +48,20 @@ class FitnessResult:
         self.scalability_reasoning = scalability_reasoning
 
         self.evaluator_results = evaluator_results or {}
+        self.breakdowns = breakdowns or {}
+        self.grades = grades or {}
+        self.weights = weights or {d: 0.2 for d in CORE_DIMENSIONS}
+        self.weight_profile = weight_profile
+        self.domain_params = domain_params or {}
 
     def __str__(self) -> str:
         lines = [
-            f"Cost: {self.cost:.1f}",
-            f"Security: {self.security:.1f}",
-            f"Reliability: {self.reliability:.1f}",
-            f"Performance: {self.performance:.1f}",
-            f"Scalability: {self.scalability:.1f}",
-            f"Fitness: {self.overall:.1f}",
+            f"Cost: {self.cost:.1f} ({self.grades.get('cost', '-')})",
+            f"Security: {self.security:.1f} ({self.grades.get('security', '-')})",
+            f"Reliability: {self.reliability:.1f} ({self.grades.get('reliability', '-')})",
+            f"Performance: {self.performance:.1f} ({self.grades.get('performance', '-')})",
+            f"Scalability: {self.scalability:.1f} ({self.grades.get('scalability', '-')})",
+            f"Fitness: {self.overall:.1f} [{self.weight_profile}]",
         ]
         return "\n".join(lines)
 
@@ -69,40 +81,42 @@ def _get_components(architecture: object) -> list:
 
 def evaluate_architecture(
     architecture: object,
+    context: Any = None,
+    weights: Optional[Dict[str, float]] = None,
+    application_type: str = "",
 ) -> FitnessResult:
-    """Evaluate an architecture across all objectives and compute fitness."""
-    # Cost evaluation
-    cost_eval = CostEvaluator()
-    cost_result = cost_eval.evaluate(architecture)
-    cost = cost_result.score
+    """Evaluate an architecture across all objectives and compute fitness.
 
-    # Security evaluation
-    sec_eval = SecurityEvaluator()
-    sec_result = sec_eval.evaluate(architecture)
-    security = sec_result.score
+    Args:
+        architecture: Architecture model instance or dict.
+        context: ParsedRequirement / StructuredRequirements / dict / ScoringContext
+            used to condition thresholds.  ``None`` uses neutral defaults.
+        weights: Optional explicit per-dimension weights (need not sum to 1;
+            they are normalized).  ``None`` resolves application-aware weights.
+        application_type: Used for weight-profile detection when the context
+            does not carry it.
+    """
+    if isinstance(context, ScoringContext):
+        ctx = context
+    else:
+        ctx = ScoringContext.from_any(context, application_type=application_type)
+    if not ctx.application_type and application_type:
+        ctx.application_type = application_type
 
-    # Reliability evaluation
-    rel_eval = ReliabilityEvaluator()
-    rel_result = rel_eval.evaluate(architecture)
-    reliability = rel_result.score
+    cost_result = CostEvaluator().evaluate(architecture, ctx)
+    sec_result = SecurityEvaluator().evaluate(architecture, ctx)
+    rel_result = ReliabilityEvaluator().evaluate(architecture, ctx)
+    perf_result = PerformanceEvaluator().evaluate(architecture, ctx)
+    scal_result = ScalabilityEvaluator().evaluate(architecture, ctx)
 
-    # Performance evaluation
-    perf_eval = PerformanceEvaluator()
-    perf_result = perf_eval.evaluate(architecture)
-    performance = perf_result.score
-
-    # Scalability evaluation
-    scal_eval = ScalabilityEvaluator()
-    scal_result = scal_eval.evaluate(architecture)
-    scalability = scal_result.score
-
-    # Weighted fitness (equal weights by default)
-    overall = (
-        0.20 * cost
-        + 0.20 * security
-        + 0.20 * reliability
-        + 0.20 * performance
-        + 0.20 * scalability
+    resolved = resolve_weights(ctx.application_type, ctx, overrides=weights)
+    w = resolved["weights"]
+    core_overall = (
+        w.get("cost", 0.2) * cost_result.score
+        + w.get("security", 0.2) * sec_result.score
+        + w.get("reliability", 0.2) * rel_result.score
+        + w.get("performance", 0.2) * perf_result.score
+        + w.get("scalability", 0.2) * scal_result.score
     )
 
     eval_results = {
@@ -113,12 +127,29 @@ def evaluate_architecture(
         "scalability": scal_result,
     }
 
+    # Domain-specific parameters (innovative layer): evaluated only when the
+    # application domain defines them; blended at EXTRA_SHARE into overall.
+    extras = evaluate_domain_params(architecture, ctx)
+    overall = blend_overall(core_overall, extras)
+    domain_params = {
+        name: {
+            "label": PARAM_DEFS[name]["label"],
+            "score": round(ds.score, 2),
+            "grade": ds.grade,
+            "breakdown": dict(ds.breakdown),
+            "strengths": list(ds.strengths),
+            "weaknesses": list(ds.weaknesses),
+            "reason": ds.reason,
+        }
+        for name, ds in extras.items()
+    }
+
     return FitnessResult(
-        cost=cost,
-        security=security,
-        reliability=reliability,
-        performance=performance,
-        scalability=scalability,
+        cost=cost_result.score,
+        security=sec_result.score,
+        reliability=rel_result.score,
+        performance=perf_result.score,
+        scalability=scal_result.score,
         overall=overall,
         cost_reasoning=cost_result.reasoning,
         security_reasoning=sec_result.reasoning,
@@ -126,4 +157,9 @@ def evaluate_architecture(
         performance_reasoning=perf_result.reasoning,
         scalability_reasoning=scal_result.reasoning,
         evaluator_results=eval_results,
+        breakdowns={k: dict(v.breakdown) for k, v in eval_results.items()},
+        grades={k: v.grade for k, v in eval_results.items()},
+        weights=blended_weights({k: round(float(w.get(k, 0.0)), 4) for k in CORE_DIMENSIONS}, extras),
+        weight_profile=resolved["profile"] + ("+domain" if extras else ""),
+        domain_params=domain_params,
     )

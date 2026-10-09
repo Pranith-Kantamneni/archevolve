@@ -29,6 +29,30 @@ class FinalArchitectureAgent(BaseAgent):
             llm_client=llm_client,
         )
 
+    def _llm_tradeoff_note(
+        self,
+        best_candidate: Candidate,
+        baseline: Optional[Dict[str, Any]],
+        requirements: StructuredRequirements,
+    ) -> str:
+        """Optional LLM-polished tradeoff synthesis ("" in deterministic mode)."""
+        try:
+            if not self.llm_client or not self.llm_client.use_llm:
+                return ""
+            summary = (
+                f"Application: {requirements.application_type or 'generic'}. "
+                f"Final scores: cost {best_candidate.cost:.1f}, security {best_candidate.security:.1f}, "
+                f"reliability {best_candidate.reliability:.1f}, performance {best_candidate.performance:.1f}, "
+                f"scalability {best_candidate.scalability:.1f}, overall {best_candidate.overall_fitness:.1f}. "
+                f"Baseline overall: {(baseline or {}).get('overall', 'n/a')}."
+            )
+            return self.llm_client.complete(
+                "In 2-3 sentences, explain the key tradeoffs of this architecture choice: " + summary,
+                system_prompt="You are a pragmatic software-architecture reviewer. Be concrete and concise.",
+            )
+        except Exception:
+            return ""
+
     def run(
         self,
         best_candidate: Candidate,
@@ -52,6 +76,8 @@ class FinalArchitectureAgent(BaseAgent):
                 "performance": round(baseline_candidate.performance, 2),
                 "scalability": round(baseline_candidate.scalability, 2),
                 "overall": round(baseline_candidate.overall_fitness, 2),
+                "grades": dict(getattr(baseline_candidate, "grades", {}) or {}),
+                "breakdowns": {k: dict(v) for k, v in (getattr(baseline_candidate, "breakdowns", {}) or {}).items()},
             }
 
         final_scores = {
@@ -62,6 +88,25 @@ class FinalArchitectureAgent(BaseAgent):
             "scalability": round(best_candidate.scalability, 2),
             "overall": round(best_candidate.overall_fitness, 2),
         }
+        # Transparency payloads live in sibling keys so final_scores stays purely numeric.
+        score_grades = dict(getattr(best_candidate, "grades", {}) or {})
+        score_breakdowns = {k: dict(v) for k, v in (getattr(best_candidate, "breakdowns", {}) or {}).items()}
+        weights_used = dict(getattr(best_candidate, "weights_used", {}) or {})
+        weight_profile = getattr(best_candidate, "weight_profile", "default")
+        from ..evaluation.domain_params import PARAM_DEFS as _PARAM_DEFS
+
+        def _domain_payload(cand: Candidate) -> Dict[str, Any]:
+            out: Dict[str, Any] = {}
+            for k, v in (getattr(cand, "extra_scores", {}) or {}).items():
+                out[k] = {
+                    "label": _PARAM_DEFS.get(k, {}).get("label", k),
+                    "score": round(float(v), 2),
+                    "grade": (getattr(cand, "extra_grades", {}) or {}).get(k, ""),
+                    "breakdown": dict(((getattr(cand, "extra_breakdowns", {}) or {}).get(k, {}) or {})),
+                }
+            return out
+
+        domain_params = _domain_payload(best_candidate)
 
         improvement = {}
         if baseline:
@@ -76,6 +121,18 @@ class FinalArchitectureAgent(BaseAgent):
                     "absolute": round(abs_diff, 2),
                     "percentage": round(pct_diff, 2),
                 }
+            # Domain-specific parameter deltas (baseline extras vs final extras).
+            for k, dp in domain_params.items():
+                b_ex = (getattr(baseline_candidate, "extra_scores", {}) or {}).get(k)
+                if b_ex is not None:
+                    abs_diff = float(dp["score"]) - float(b_ex)
+                    improvement[k] = {
+                        "initial": round(float(b_ex), 2),
+                        "final": dp["score"],
+                        "absolute": round(abs_diff, 2),
+                        "percentage": round((abs_diff / max(float(b_ex), 1e-10)) * 100, 2),
+                        "label": dp["label"],
+                    }
 
         # Build comprehensive design rationale
         rationale_parts = []
@@ -86,6 +143,9 @@ class FinalArchitectureAgent(BaseAgent):
             f"fitness of {best_candidate.overall_fitness:.1f}/100. Incorporates {len(arch.components)} components tailored for "
             f"{requirements.application_type or 'high-performance systems'} with {arch.communication_pattern} messaging."
         )
+        llm_note = self._llm_tradeoff_note(best_candidate, baseline, requirements)
+        if llm_note:
+            rationale_parts.append(llm_note)
 
         connections = derive_connections(arch.components, arch.communication_pattern, arch.services)
 
@@ -101,6 +161,11 @@ class FinalArchitectureAgent(BaseAgent):
                     "performance": round(c.performance, 2),
                     "scalability": round(c.scalability, 2),
                 },
+                "objective_grades": dict(getattr(c, "grades", {}) or {}),
+                "score_breakdowns": {k: dict(v) for k, v in (getattr(c, "breakdowns", {}) or {}).items()},
+                "weights_used": dict(getattr(c, "weights_used", {}) or {}),
+                "weight_profile": getattr(c, "weight_profile", "default"),
+                "domain_params": _domain_payload(c),
                 "selected": bool(getattr(c, "selected_for_mutation", False)),
                 "components": [
                     {"name": comp.name, "type": comp.type, "quantity": comp.quantity, "managed": comp.managed}
@@ -142,6 +207,11 @@ class FinalArchitectureAgent(BaseAgent):
             "baseline": baseline,
             "final_scores": final_scores,
             "improvement": improvement,
+            "score_grades": score_grades,
+            "score_breakdowns": score_breakdowns,
+            "weights_used": weights_used,
+            "weight_profile": weight_profile,
+            "domain_params": domain_params,
             "final_architecture": {
                 "name": arch.name,
                 "generation": arch.generation,
@@ -152,6 +222,8 @@ class FinalArchitectureAgent(BaseAgent):
                 "performance": round(best_candidate.performance, 2),
                 "scalability": round(best_candidate.scalability, 2),
                 "overall_fitness": round(best_candidate.overall_fitness, 2),
+                "grades": dict(getattr(best_candidate, "grades", {}) or {}),
+                "breakdowns": {k: dict(v) for k, v in (getattr(best_candidate, "breakdowns", {}) or {}).items()},
                 "services": list(arch.services),
                 "communication_pattern": arch.communication_pattern,
                 "deployment_strategy": arch.deployment_strategy,
@@ -184,8 +256,7 @@ class FinalArchitectureAgent(BaseAgent):
 
         trace = AgentTraceEntry(
             agent=self.name,
-            action="Finalize Architecture",
-            architecture=arch.name,
+            action="Finalize Architecture",            architecture=arch.name,
             reason=f"Synthesized winning architecture '{arch.name}' with overall fitness {best_candidate.overall_fitness:.1f}/100.",
             outcome="finalized",
             fitness=best_candidate.overall_fitness,

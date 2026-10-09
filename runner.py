@@ -46,6 +46,7 @@ def run_optimization(
     application_type: Optional[str],
     requirements: str,
     constraints: Optional[str] = None,
+    weights: Optional[Dict[str, float]] = None,
 ) -> Dict[str, Any]:
     """Execute the ARCHEVOLVE pipeline for a user request and persist the result.
 
@@ -53,6 +54,8 @@ def run_optimization(
         application_type: Application/system type (e.g. 'E-commerce platform')
         requirements: Free-text system requirements
         constraints: Optional free-text constraints
+        weights: Optional custom per-dimension weights (normalized internally).
+            When None, application-aware weights are resolved automatically.
 
     Returns:
         A full result dictionary including a `run_id`.
@@ -65,14 +68,15 @@ def run_optimization(
     experience_path = os.environ.get(
         "ARCHEVOLVE_EXPERIENCE_PATH", "experience_memory.json"
     )
+    use_llm = os.environ.get("ARCHEVOLVE_MODE", "mock").strip().lower() == "real"
 
     engine = EvolutionEngine(
         population_size=5,
         max_generations=5,
         selection_count=2,
         mutation_count=2,
-        weights=None,
-        use_llm=False,
+        weights=weights,
+        use_llm=use_llm,
         experience_path=experience_path,
         application_type=application_type or "",
         constraints=constraints_dict,

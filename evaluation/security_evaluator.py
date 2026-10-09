@@ -1,105 +1,144 @@
 from __future__ import annotations
 
-from typing import Tuple, Dict, Any
+from typing import Any, List
 
-from ..models.architecture import Architecture, Component
+from ..models.architecture import Architecture
+from .result import EvaluatorResult
+from .scoring import ScoringContext, clamp01, count_type, grade_for, has_name_like, has_type
 
 
-class EvaluatorResult:
-    """Result from an architecture evaluator."""
-
-    def __init__(
-        self,
-        score: float,
-        reasoning: str = "",
-        strengths: list[str] | None = None,
-        weaknesses: list[str] | None = None,
-        reason: str | None = None,
-    ):
-        self.score = float(score)
-        self.reason = reason if reason is not None else reasoning
-        self.reasoning = self.reason
-        self.strengths = list(strengths or [])
-        self.weaknesses = list(weaknesses or [])
-
-    def __str__(self) -> str:
-        return f"Score: {self.score:.1f} - {self.reason}"
+def _components(architecture: Any) -> List[Any]:
+    comps = getattr(architecture, "components", None)
+    if isinstance(comps, list):
+        return comps
+    if isinstance(architecture, dict):
+        comps = architecture.get("components", [])
+        if isinstance(comps, list):
+            return comps
+    return []
 
 
 class SecurityEvaluator:
-    """Evaluates the security posture of an architecture.
+    """Security-posture evaluator (higher = stronger defense in depth).
 
-    Scores range from 0-100 where higher is more secure.
+    Bottom-up rubric:
+      - perimeter           /25  gateway + WAF/security layer + LB
+      - identity            /25  auth enforcement (dedicated > gateway-only > none)
+      - data_protection     /30  vault/KMS + managed-DB encryption + audit/compliance
+      - segmentation        /20  decoupled async paths + minimal public entry points
+    Thresholds tighten when security_level == high or compliance is required.
     """
 
-    def evaluate(self, architecture: Architecture) -> EvaluatorResult:
-        """Evaluate security of an architecture based on its properties."""
-        components = architecture.components
+    def evaluate(self, architecture: Architecture, context: Any = None) -> EvaluatorResult:
+        ctx = context if isinstance(context, ScoringContext) else ScoringContext.from_any(context)
+        comps = _components(architecture)
+        strict = ctx.security_level == "high" or bool(ctx.compliance)
 
-        has_auth = any(
-            "auth" in c.name.lower() or c.type == "gateway" or "vault" in c.name.lower() or c.type == "security"
-            for c in components
-        )
-        num_gateways = sum(1 for c in components if c.type == "gateway")
-        has_security_layer = any(c.type == "security" for c in components)
-        num_services = len(components)
-        is_monolithic = num_services <= 2
+        # --- 1. perimeter /25 ---
+        perimeter = 0.0
+        if has_type(comps, "gateway"):
+            perimeter += 10.0
+        if has_type(comps, "security"):
+            # Partial credit scales with number of distinct security controls.
+            perimeter += min(12.0, 6.0 + 3.0 * count_type(comps, "security"))
+            if has_name_like(comps, "waf", "firewall"):
+                perimeter += 3.0
+        if has_name_like(comps, "load balancer"):
+            perimeter += 2.0
+        perimeter = min(25.0, perimeter)
 
-        score = 50  # base score
+        # --- 2. identity /25 ---
+        identity = 0.0
+        dedicated_auth = has_name_like(comps, "auth", "identity", "cognito", "keycloak", "okta")
+        if dedicated_auth:
+            identity += 15.0
+        if has_type(comps, "gateway"):
+            identity += 8.0
+        if has_type(comps, "security") and has_name_like(comps, "vault", "kms", "secrets"):
+            identity += 2.0
+        if identity == 0 and len(comps) <= 3:
+            identity = 4.0  # tiny closed surface, weak but not fully exposed
+        identity = min(25.0, identity)
 
-        if has_auth:
-            score += 20
-        if num_gateways > 0:
-            score += 15
+        # --- 3. data protection /30 ---
+        data = 0.0
+        if has_name_like(comps, "vault", "kms", "hsm", "secrets"):
+            data += 12.0
+        managed_db = any(str(getattr(c, "type", "")).lower() == "database" and bool(getattr(c, "managed", False)) for c in comps)
+        if managed_db:
+            data += 7.0  # encryption at rest + automated patching signal
+        if has_name_like(comps, "audit"):
+            data += 7.0 if strict else 5.0
+        elif strict:
+            data += 0.0  # strict mode: no audit logger, no credit
         else:
-            score -= 5
-        if has_security_layer:
-            score += 10
-        if is_monolithic:
-            score += 5
+            data += 2.0
+        if ctx.authentication_required and dedicated_auth:
+            data += 2.0
+        if has_name_like(comps, "backup", "recovery"):
+            data += 2.0
+        data = min(30.0, data)
+
+        # --- 4. segmentation /20 ---
+        seg = 0.0
+        comm = str(getattr(architecture, "communication_pattern", "sync") or "sync").lower()
+        if comm == "event-driven":
+            seg += 9.0
+        elif comm == "async":
+            seg += 7.0
         else:
-            score += 2
+            seg += 3.0
+        if has_type(comps, "messaging"):
+            seg += min(5.0, 3.0 + count_type(comps, "messaging"))
+        entry = count_type(comps, "gateway", "load balancer")
+        n = len(comps)
+        if n:
+            # Fewer public entry points per service = smaller blast radius.
+            seg += 6.0 * clamp01(1.6 - (entry / max(n, 1)) * 2.2 + 0.6) if entry else 1.0
+        seg = min(20.0, seg)
 
-        score = max(0, min(100, score))
+        score = perimeter + identity + data + seg
+        breakdown = {
+            "perimeter": round(perimeter, 2),
+            "identity": round(identity, 2),
+            "data_protection": round(data, 2),
+            "segmentation": round(seg, 2),
+        }
+        max_breakdown = {"perimeter": 25.0, "identity": 25.0, "data_protection": 30.0, "segmentation": 20.0}
 
-        strengths = []
-        weaknesses = []
-        reasons_list = []
-
-        if num_gateways > 0:
-            strengths.append("API gateway provides edge security controls, rate limiting, and request filtering.")
-            reasons_list.append("API gateway provides security controls and request filtering.")
+        strengths, weaknesses = [], []
+        if perimeter >= 18:
+            strengths.append("Layered edge controls (gateway + dedicated security controls).")
         else:
-            weaknesses.append("Missing API gateway exposes backend services directly to external traffic.")
-            reasons_list.append("No API gateway, expanded attack surface.")
-
-        if has_security_layer:
-            strengths.append("Dedicated security component (secrets/encryption vault) safeguards sensitive credentials.")
-            reasons_list.append("Dedicated security layer present.")
-
-        if has_auth:
-            strengths.append("Authentication/authorization enforcement present.")
-            reasons_list.append("Authentication mechanism present.")
+            weaknesses.append("Thin edge perimeter: add an API gateway and WAF/secrets controls.")
+        if dedicated_auth:
+            strengths.append("Dedicated authentication/identity enforcement present.")
+        elif has_type(comps, "gateway"):
+            weaknesses.append("No dedicated auth service; gateway-only auth is partial.")
         else:
-            weaknesses.append("No explicit authentication or identity gateway component found.")
-            reasons_list.append("No explicit authentication component.")
-
-        if is_monolithic:
-            reasons_list.append("Monolithic architecture has smaller attack surface.")
+            weaknesses.append("No explicit authentication component found.")
+        if data >= 20:
+            strengths.append("Data-protection controls (vault/KMS, managed encryption, audit) present.")
         else:
-            reasons_list.append("Microservices architecture with defense-in-depth possible.")
-
+            missing = []
+            if not has_name_like(comps, "vault", "kms", "secrets"):
+                missing.append("secrets management")
+            if strict and not has_name_like(comps, "audit"):
+                missing.append("audit logging (required for compliance)")
+            weaknesses.append("Weak data-protection posture: missing " + (", ".join(missing) or "defense depth") + ".")
+        if seg >= 13:
+            strengths.append("Decoupled async paths limit lateral blast radius.")
+        elif comm == "sync" and not has_type(comps, "messaging"):
+            weaknesses.append("Synchronous-only coupling widens the exploit blast radius.")
         if not strengths:
-            strengths.append("Standard perimeter isolation.")
-        if not weaknesses and score < 75:
-            weaknesses.append("Lacks advanced threat prevention and dedicated secrets management.")
+            strengths.append("Baseline isolation suitable for low-risk workloads.")
+        if not weaknesses and score < 70:
+            weaknesses.append("Lacks advanced controls (per-request authz, mTLS, anomaly detection).")
 
-        reason = " | ".join(reasons_list)
-
-        return EvaluatorResult(
-            score=score,
-            reasoning=reason,
-            strengths=strengths,
-            weaknesses=weaknesses,
-            reason=reason,
+        req_tag = "strict" if strict else ctx.security_level
+        reason = (
+            f"Security {score:.1f}/100 [{req_tag}]: perimeter {perimeter:.0f}/25, "
+            f"identity {identity:.0f}/25, data {data:.0f}/30, segmentation {seg:.0f}/20."
         )
+        return EvaluatorResult(score, reasoning=reason, strengths=strengths, weaknesses=weaknesses,
+                               breakdown=breakdown, max_breakdown=max_breakdown)

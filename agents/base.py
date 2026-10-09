@@ -42,17 +42,59 @@ class AgentMessage(BaseModel):
 
 
 class LLMClient:
-    """Common LLM client interface for deterministic and LLM-assisted agent operation."""
+    """Common LLM client interface for deterministic and LLM-assisted agent operation.
 
-    def __init__(self, use_llm: bool = False, model: str = "gpt-4o"):
+    Deterministic (default) mode needs no keys and never calls the network.
+    LLM-assisted mode speaks the OpenAI-compatible ``/chat/completions`` API
+    (works with OpenAI, Azure OpenAI, and any OpenAI-compatible gateway by
+    overriding ``ARCHEVOLVE_LLM_BASE_URL``).  Every call is wrapped so any
+    failure silently falls back to deterministic rule logic.
+    """
+
+    def __init__(self, use_llm: bool = False, model: Optional[str] = None):
+        import os as _os
+
         self.use_llm = use_llm
-        self.model = model
+        self.model = model or _os.environ.get("ARCHEVOLVE_LLM_MODEL", "gpt-4o")
+        self.api_key = _os.environ.get("ARCHEVOLVE_LLM_API_KEY", "")
+        self.base_url = _os.environ.get(
+            "ARCHEVOLVE_LLM_BASE_URL", "https://api.openai.com/v1"
+        ).rstrip("/")
 
     def complete(self, prompt: str, system_prompt: str = "") -> str:
-        """Complete a prompt. In deterministic mode, returns empty string to trigger rule logic."""
-        if not self.use_llm:
+        """Complete a prompt. Returns "" on any failure to trigger rule logic."""
+        if not self.use_llm or not self.api_key:
             return ""
-        # Pluggable external LLM provider if enabled
+        try:
+            import json as _json
+            import urllib.request as _req
+
+            body = _json.dumps({
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": system_prompt or "You are a software-architecture expert."},
+                    {"role": "user", "content": prompt},
+                ],
+                "temperature": 0.2,
+                "max_tokens": 800,
+            }).encode("utf-8")
+            request = _req.Request(
+                self.base_url + "/chat/completions",
+                data=body,
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {self.api_key}",
+                },
+                method="POST",
+            )
+            with _req.urlopen(request, timeout=30) as resp:
+                payload = _json.loads(resp.read().decode("utf-8"))
+            choices = payload.get("choices", [])
+            if choices:
+                content = choices[0].get("message", {}).get("content", "")
+                return (content or "").strip()
+        except Exception:
+            pass
         return ""
 
 

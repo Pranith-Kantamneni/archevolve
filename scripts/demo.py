@@ -6,7 +6,11 @@ Runs the complete evolutionary pipeline for automated software system design.
 
 from __future__ import annotations
 
+import os
 import sys
+# Ensure the project root is in sys.path for module imports
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..')))
+import argparse
 from archevolve.evolution.evolution_engine import EvolutionEngine
 
 
@@ -36,7 +40,7 @@ def print_table_line(labels: list, values: list, width1: int = 25, width2: int =
     print(f"  {l1:<{width1}}  {v1:>{width2}}  {l2:<{width2}}  {v2:>{width2}}")
 
 
-def demo_basic() -> None:
+def demo_basic(expected_users: int | None = None) -> None:
     """Run basic demo of the ARCHEVOLVE pipeline."""
     print_section("ARCHEVOLVE DEMO")
     print_line(" ", "Agentic AI Framework for Automated Software System Design")
@@ -49,6 +53,13 @@ def demo_basic() -> None:
         "and should be scalable during traffic spikes while keeping infrastructure "
         "cost reasonable."
     )
+    if expected_users is not None:
+        raw_requirement = (
+            f"Build an e-commerce platform that supports {expected_users:,} concurrent users, "
+            "requires high availability, secure payment processing, low latency, "
+            "and should be scalable during traffic spikes while keeping infrastructure "
+            "cost reasonable."
+        )
     print_line("Raw requirement", raw_requirement)
 
     # 2. PARSED REQUIREMENTS
@@ -182,8 +193,11 @@ def demo_basic() -> None:
 
 def main() -> None:
     """Main entry point for the demo."""
+    parser = argparse.ArgumentParser(description="Run ARCHEVOLVE demo with optional user load.")
+    parser.add_argument("--users", type=int, help="Number of concurrent users to embed in the requirement (e.g., 500, 5000000000).")
+    args = parser.parse_args()
     try:
-        demo_basic()
+        demo_basic(expected_users=args.users)
     except Exception as e:
         print(f"\nERROR: {e}")
         import traceback

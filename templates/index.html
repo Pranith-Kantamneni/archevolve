@@ -63,6 +63,22 @@
     </div>
 
     <div class="field">
+      <label>Scoring priorities <span class="muted2">(optional — auto-tuned per application by default)</span></label>
+      <div class="hint">Leave on Auto to let ARCHEVOLVE weight objectives by application (banking → security, chat → performance, …). Switch to Custom to set your own weights.</div>
+      <div class="flex mb16">
+        <button type="button" class="tab-btn active" id="w-auto">Auto (recommended)</button>
+        <button type="button" class="tab-btn" id="w-custom">Custom</button>
+        <span class="muted2" id="w-profile-note" style="font-size:12.5px;"></span>
+      </div>
+      <div id="weight-sliders" class="hidden">
+        <div class="hint" style="margin-bottom:10px;">Fill in <b>any four</b> weights as percentages — select the <b>Auto</b> radio on the remaining one and it is auto-filled so the total is always exactly 100%.</div>
+        <div class="grid cols2" id="w-grid"></div>
+        <div class="muted2 mt8" id="w-total" style="font-size:12.5px;"></div>
+        <div class="alert error" id="w-error" style="margin-top:10px;"></div>
+      </div>
+    </div>
+
+    <div class="field">
       <label>Quick examples <span class="muted2">(fill the form — not fixed architectures)</span></label>
       <div class="chips" id="preset-chips">
         <span class="chip" data-preset="ecommerce">E-commerce</span>
@@ -168,6 +184,84 @@
   const alertBox = document.getElementById("form-alert");
   const overlay = document.getElementById("overlay");
 
+  // ---- Scoring priority controls (auto vs custom weights) ----
+  // User fills ANY four dims; the one marked Auto is computed as 100 - rest.
+  const W_DIMS = ["cost", "security", "reliability", "performance", "scalability"];
+  const W_LABEL = { cost: "Cost", security: "Security", reliability: "Reliability", performance: "Performance", scalability: "Scalability" };
+  let W_AUTO = "scalability";
+  let W_MODE = "auto";
+  const W_VALS = { cost: 20, security: 20, reliability: 20, performance: 20, scalability: 20 };
+  function renderWeightSliders() {
+    const grid = document.getElementById("w-grid");
+    grid.innerHTML = W_DIMS.map(d =>
+      '<div class="w-row"><label for="w-' + d + '">' + W_LABEL[d] + '</label>' +
+      '<div class="w-input-wrap">' +
+      '<input type="radio" name="w-auto" value="' + d + '" title="Auto-fill this weight"' +
+      (d === W_AUTO ? ' checked' : '') + ' class="w-auto-radio">' +
+      '<span class="muted2" style="font-size:11px;">Auto</span>' +
+      '<input type="number" id="w-' + d + '" min="0" max="100" step="1" value="' + W_VALS[d] + '">' +
+      '<span>%</span></div></div>'
+    ).join("");
+    W_DIMS.forEach(d => {
+      document.getElementById("w-" + d).addEventListener("input", e => {
+        let v = Number(e.target.value);
+        if (isNaN(v)) v = 0;
+        W_VALS[d] = v;
+        updateWeightTotal();
+      });
+    });
+    grid.querySelectorAll('input[name="w-auto"]').forEach(r => {
+      r.addEventListener("change", e => {
+        W_AUTO = e.target.value;
+        updateWeightTotal();
+      });
+    });
+    updateWeightTotal();
+  }
+  function updateWeightTotal() {
+    const errBox = document.getElementById("w-error");
+    errBox.classList.remove("show");
+    W_DIMS.forEach(d => {
+      const inp = document.getElementById("w-" + d);
+      const isAuto = d === W_AUTO;
+      inp.readOnly = isAuto;
+      inp.tabIndex = isAuto ? -1 : 0;
+      inp.classList.toggle("w-auto-input", isAuto);
+    });
+    let sum = 0, bad = null;
+    for (const d of W_DIMS) {
+      if (d === W_AUTO) continue;
+      const v = Number(W_VALS[d]);
+      if (isNaN(v) || v < 0 || v > 100) { bad = W_LABEL[d] + " must be a number between 0 and 100."; break; }
+      sum += v;
+    }
+    if (!bad && sum > 100) bad = "The four typed weights add up to " + sum + "% — reduce them so the auto-filled remainder (" + W_LABEL[W_AUTO] + ") stays ≥ 0%.";
+    if (bad) {
+      errBox.textContent = bad;
+      errBox.classList.add("show");
+      document.getElementById("w-" + W_AUTO).value = "—";
+      document.getElementById("w-total").textContent = "Total: invalid (must equal 100%).";
+      return false;
+    }
+    W_VALS[W_AUTO] = 100 - sum;
+    document.getElementById("w-" + W_AUTO).value = W_VALS[W_AUTO];
+    document.getElementById("w-total").textContent = "Total: 100% ✓ (" +
+      W_DIMS.map(d => W_LABEL[d] + " " + W_VALS[d] + "%" + (d === W_AUTO ? " auto" : "")).join(" · ") + ")";
+    return true;
+  }
+  function setWeightMode(mode) {
+    W_MODE = mode;
+    document.getElementById("w-auto").classList.toggle("active", mode === "auto");
+    document.getElementById("w-custom").classList.toggle("active", mode === "custom");
+    document.getElementById("weight-sliders").classList.toggle("hidden", mode !== "custom");
+    document.getElementById("w-profile-note").textContent = mode === "auto"
+      ? "Detected profile is shown on the results page."
+      : "Your weights will override the application profile.";
+  }
+  document.getElementById("w-auto").addEventListener("click", () => setWeightMode("auto"));
+  document.getElementById("w-custom").addEventListener("click", () => setWeightMode("custom"));
+  renderWeightSliders();
+
   function showError(msg) {
     alertBox.textContent = msg;
     alertBox.classList.add("show");
@@ -225,6 +319,7 @@
     if (!appType) return showError("Please enter an Application / System Type.");
     if (!requirements) return showError("Please describe the System Requirements.");
     if (requirements.length < 10) return showError("Please provide a more detailed description of the System Requirements.");
+    if (W_MODE === "custom" && !updateWeightTotal()) return showError("Fix the custom scoring weights so they total exactly 100%.");
 
     overlay.classList.remove("hidden");
     document.getElementById("gen-label").textContent = "";
@@ -232,14 +327,19 @@
     startStages();
 
     try {
+      const body = {
+        application_type: appType,
+        requirements: requirements,
+        constraints: constraints
+      };
+      if (W_MODE === "custom") {
+        body.weights = {};
+        W_DIMS.forEach(d => { body.weights[d] = W_VALS[d] / 100; });
+      }
       const resp = await fetch("/optimize", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          application_type: appType,
-          requirements: requirements,
-          constraints: constraints
-        })
+        body: JSON.stringify(body)
       });
 
       if (!resp.ok) {

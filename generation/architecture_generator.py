@@ -65,10 +65,13 @@ class ArchitectureGenerator:
         candidates: List[Architecture] = []
         template_count = min(len(self.TEMPLATES), self.population_size)
 
-        selected_templates = self.rng.sample(self.TEMPLATES, template_count)
+        # Choose templates with bias based on workload size
+        selected_templates = self._select_templates(context, template_count)
 
         for i, template_fn in enumerate(selected_templates):
             architecture = template_fn(context)
+            # Apply workload-driven adjustments before naming
+            architecture = self._apply_workload_scaling(architecture, context)
             architecture.name = (
                 f"{architecture.name} #{i + 1}"
                 if len(candidates) > 0
@@ -83,6 +86,8 @@ class ArchitectureGenerator:
             architecture = template_fn(context)
             architecture.generation = 0
             architecture = self._add_variation(architecture, context)
+            # Apply workload-driven adjustments for variant candidates as well
+            architecture = self._apply_workload_scaling(architecture, context)
             architecture.name = f"{architecture.name} Variant"
             candidates.append(architecture)
 
@@ -91,6 +96,8 @@ class ArchitectureGenerator:
             architecture = ArchitectureModel.create_hybrid(context)
             architecture.generation = 0
             architecture.name = "Custom Adaptation"
+            # Ensure even fallback candidates respect workload scaling
+            architecture = self._apply_workload_scaling(architecture, context)
             candidates.append(architecture)
 
         return candidates
@@ -155,6 +162,8 @@ class ArchitectureGenerator:
         assumptions = []
         if parsed.expected_users and parsed.expected_users > 10000:
             assumptions.append("High traffic volume")
+        if parsed.expected_users and parsed.expected_users > 1000000:
+            assumptions.append("Very high traffic (>=1M users)")
         if parsed.cost_sensitive:
             assumptions.append("Cost optimization required")
         if parsed.security_level == "high":
@@ -179,10 +188,97 @@ class ArchitectureGenerator:
         ):
             comps.append(Component(name="RabbitMQ", type="messaging", managed=False))
 
-        if context["cost_sensitive"]:
+        if context.get("cost_sensitive"):
             for c in comps:
                 if c.managed and c.type not in ("gateway", "database", "security"):
                     c.managed = False
 
         architecture.components = comps
         return architecture
+
+    def _apply_workload_scaling(self, architecture: Architecture, context: Dict[str, Any]) -> Architecture:
+        """Adjust architecture components based on workload signals.
+
+        Modifies components such as load balancers, DB replicas, cache clusters, and CDN
+        according to expected users, latency requirements, and cost sensitivity.
+        Reasons are recorded in each component's ``properties`` for traceability.
+        """
+        comps = list(architecture.components)
+        expected = context.get("expected_users", 0)
+        latency = context.get("max_latency_ms")
+        cost_sensitive = context.get("cost_sensitive", False)
+
+        # High traffic (>=1M users) – add load balancer and scale DB replicas
+        if expected >= 1_000_000:
+            if not any(c.type == "gateway" and "Load Balancer" in c.name for c in comps):
+                comps.append(
+                    Component(
+                        name="Load Balancer",
+                        type="gateway",
+                        managed=True,
+                        properties={"reason": "Very high expected users require traffic distribution"},
+                    )
+                )
+            for c in comps:
+                if c.type == "database" and c.quantity < 2:
+                    c.quantity = 2
+                    c.properties = {**(c.properties or {}), "reason": "Add replica for high‑traffic resilience"}
+        # Moderate‑high traffic (>=100k users) – ensure cache and DB replica
+        elif expected >= 100_000:
+            if not any(c.type == "cache" for c in comps):
+                comps.append(
+                    Component(
+                        name="Redis Cache",
+                        type="cache",
+                        managed=True,
+                        properties={"reason": "Cache to reduce DB load for many users"},
+                    )
+                )
+            for c in comps:
+                if c.type == "database" and c.quantity < 2:
+                    c.quantity = 2
+                    c.properties = {**(c.properties or {}), "reason": "Second DB instance for increased load"}
+        # Low latency requirement (<=100ms) – add edge CDN
+        if latency is not None and latency <= 100:
+            if not any(c.type == "cdn" for c in comps):
+                comps.append(
+                    Component(
+                        name="Edge CDN",
+                        type="cdn",
+                        managed=True,
+                        properties={"reason": "Sub‑100ms latency SLA requires edge caching"},
+                    )
+                )
+        # Cost‑sensitive mode – downgrade non‑essential managed services
+        if cost_sensitive:
+            for c in comps:
+                if c.managed and c.type not in ("gateway", "database", "security"):
+                    c.managed = False
+                    c.properties = {**(c.properties or {}), "reason": "Cost‑sensitive – prefer self‑managed component"}
+        architecture.components = comps
+        return architecture
+
+    def _select_templates(self, context: Dict[str, Any], count: int) -> List[Any]:
+        """Select architecture templates with workload‑aware bias.
+
+        For very high traffic (>1M users) we prioritize microservices and hybrid styles
+        to ensure scalability. For moderate traffic (>100k) we allow a mix but still
+        include at least one microservices template. For low traffic we keep the full
+        random selection.
+        """
+        expected = context.get("expected_users", 0)
+        # Determine weighted pool
+        weighted_templates = []
+        if expected >= 1_000_000:
+            # Strong bias towards microservices and hybrid
+            weighted_templates = [self.TEMPLATES[1], self.TEMPLATES[4]] * 3 + self.TEMPLATES
+        elif expected >= 100_000:
+            # Ensure at least one microservices template
+            weighted_templates = [self.TEMPLATES[1]] * 2 + self.TEMPLATES
+        else:
+            weighted_templates = self.TEMPLATES
+        # Sample without replacement; if pool smaller than count, fallback to unique set
+        unique_pool = list(dict.fromkeys(weighted_templates))
+        if len(unique_pool) <= count:
+            return unique_pool[:count]
+        return self.rng.sample(unique_pool, count)

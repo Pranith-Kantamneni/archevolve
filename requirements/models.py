@@ -1,5 +1,5 @@
 from __future__ import annotations
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 from typing import List, Optional, Dict, Any
 
 
@@ -70,7 +70,8 @@ class ParsedRequirement(BaseModel):
     # Raw input for reference
     raw_input: str = Field(description="Original raw requirement text")
 
-    @validator("raw_input")
+    @field_validator("raw_input")
+    @classmethod
     def raw_must_not_be_empty(cls, v):
         if not v or not v.strip():
             raise ValueError("raw_input must not be empty")
@@ -131,13 +132,26 @@ class RequirementParser:
         patterns = [
             r"(\d{1,3}(?:,\d{3})*)\s*concurrent\s*users",
             r"(\d{1,3}(?:,\d{3})*)\s*users",
+            r"(\d+)\s*users",  # plain numbers without commas
             r"(\d+(?:\.\d+)?)\s*k\s*concurrent",
+            r"(\d+(?:\.\d+)?)(?:\s*([Mm]illion|[Bb]illion|[Kk])?)\s*users?",
         ]
         for pattern in patterns:
             match = re.search(pattern, text, re.IGNORECASE)
             if match:
-                value = int(match.group(1).replace(",", ""))
-                parsed.expected_users = value
+                # Handle possible suffixes like million, billion, k
+                number_str = match.group(1).replace(",", "")
+                suffix = match.group(2) if len(match.groups()) > 1 else None
+                multiplier = 1
+                if suffix:
+                    suffix_lower = suffix.lower()
+                    if suffix_lower.startswith('k'):
+                        multiplier = 1_000
+                    elif suffix_lower.startswith('m'):
+                        multiplier = 1_000_000
+                    elif suffix_lower.startswith('b'):
+                        multiplier = 1_000_000_000
+                parsed.expected_users = int(float(number_str) * multiplier)
                 break
 
     def _extract_performance_requirements(self, text: str, parsed: ParsedRequirement) -> None:

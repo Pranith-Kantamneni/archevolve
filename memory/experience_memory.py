@@ -174,7 +174,7 @@ class JsonExperienceMemory:
     ) -> ExperienceEntry:
         """Add a new experience entry (supports both successes and failures)."""
         if outcome is None:
-            outcome = "success" if fitness >= 70.0 else "failure"
+            outcome = "success" if fitness >= 75.0 else "failure"
 
         entry = ExperienceEntry(
             architecture_name=architecture_name,
